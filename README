@@ -1,12 +1,14 @@
-3 April 1999
+28 March 2000
 
-This is version 0.13 of Perlmacs, a program based on GNU Emacs with
-the Perl interpreter linked in.
+This is version 0.14 of Perlmacs, a program based on GNU Emacs with
+the Perl interpreter linked in.  Perlmacs has all the functionality of
+both Perl and Emacs, and it lets Perl code call functions and access
+variables of Lisp.
 
 Perlmacs is still considered "beta" at this time, so if you use it for
 day-to-day editing, I suggest you save your work often.  Send bug
-reports to jtobey@channel1.com.  For the latest (semi-)stable version,
-look in either of these locations
+reports to jtobey@john-edwin-tobey.org.  For the latest (semi-)stable
+version, look in either of these locations
 
     http://www.perl.com/CPAN/authors/id/JTOBEY/
     http://john-edwin-tobey.org/perlmacs/src/
@@ -14,20 +16,39 @@ look in either of these locations
 for a file named `Emacs-PerlmacsPatch-x.yy.tar.gz' (where x.yy is the
 highest version number).
 
-For information about CVS updates, see
-`http://john-edwin-tobey.org/perlmacs/'.
+Perlmacs is available through anonymous CVS, but it's a little
+complex.  Check http://john-edwin-tobey.org/perlmacs/ or contact me if
+you would like instructions on setting up a CVS directory.
 
 
-NEW IN 0.13
+REQUIREMENTS
+============
+
+Perlmacs requires Perl version 5.005 or higher.  It has been known to
+work on versions of Unix including Linux and Solaris.  On some Unix
+machines (one FreeBSD and another Solaris) the program dies when run
+in graphical mode (with DISPLAY set).  If you debug this, please let
+me know right away.
+
+Perlmacs has not been built on Windows, to my knowledge.
+
+
+NEW IN 0.14
 ===========
 
-    * Added many Lisp functions for conveniently accessing Perl data.
+    * Support Perl 5.6.0.  (Emacs 20.3 is still required.)
+
+    * Bundle Emacs::Lisp with the distribution.
+
+    * Fix behavior of special Perl variables STDOUT, %ENV, etc. when
+      using Perl 5.6.0 ("print" inserts text in the buffer).
+
+    * Temporarily removed 0.13 Lisp interface while working on a
+      replacement.
 
 
 INSTALLATION
 ============
-
-Perlmacs requires Perl version 5.005 or higher.
 
 The Emacs::PerlmacsPatch module is not a Perl module in the ordinary
 sense.  It exists merely as a convenience for distribution purposes
@@ -35,30 +56,34 @@ and to take advantage of Perl's `Makefile.PL' interface.  Building and
 installing Emacs::PerlmacsPatch really means building and installing
 Perlmacs.
 
-You will need the GNU Emacs source distribution in order to build
-Perlmacs.  Find the file emacs-20.3.tar.gz in a location such as one
-of these:
+You will need the GNU Emacs 20.3 source distribution in order to build
+Perlmacs.  Find the file emacs-20.3.tar.gz in a location such as
+these:
 
     ftp://ftp.gnu.org/pub/gnu/emacs/emacs-20.3.tar.gz
     ftp://metalab.unc.edu/pub/gnu/emacs/emacs-20.3.tar.gz
 
-`Makefile.PL' will search the current directory, its parent, and
-possibly other locations for this file.  You can specify its location
-by passing EMACS_SRC=/path/to/emacs-20.3.tar.gz as an argument to
-Makefile.PL.  If all else fails, it will offer to download it from the
-net for you.
+Makefile.PL will search the current directory, its parent, and
+possibly other locations for emacs-20.3.tar.gz.  You can specify its
+location by passing EMACS_SRC=/path/to/emacs-20.3.tar.gz as an
+argument to Makefile.PL.  Failing that, Makefile.PL will offer to
+download it from the net for you.
 
-When you have the Emacs source, cd into the top directory of the
-Emacs::PerlmacsPatch distribution and run the usual commands for Perl
-modules, namely:
+cd into the top directory of the Emacs::PerlmacsPatch distribution and
+run the standard command sequence for installing Perl modules:
 
     perl Makefile.PL
     make
+    make test
     make install
 
-(There are no tests to run.)  If you want to pass options to the
-Perlmacs `configure' script, give them to Makefile.PL after a `--'.
-For example:
+Although Perlmacs supports Perl 5.005, one of the tests will fail.
+This is due to a bug which has been fixed in 5.6.0.  It only affects
+programs that destroy and recreate Perl interpreters, which you are
+not likely to do without realizing it.
+
+If you want to pass options to the Perlmacs `configure' script, give
+them to Makefile.PL after a `--'.  For example:
 
     perl Makefile.PL -- --prefix=/opt
 
@@ -67,54 +92,22 @@ For a list of `configure' options, do this:
     perl Makefile.PL
     emacs-20.3/configure --help
 
-By default, the program will be installed in /usr/local/bin under the
-names `pmacs' and `perlmacs'.  Invoke it as `pmacs' when you want it
-to parse its command line as Emacs would; `perlmacs' behaves like
-Perl.
+By default, the program will be installed in the same directory as
+perl under the names `pmacs' and `perlmacs'.  Invoke it as pmacs when
+you want edit files as Emacs would; use perlmacs to run Perl scripts.
 
 Your Perl must have working ExtUtils::Embed capabilities.  If not, or
-if Perl's version number is too low, `configure' will exclude Perl
+if Perl's version number is below 5.005, `configure' will exclude Perl
 support, and you will have something close to standard GNU Emacs.  If
 you are unsure about this, watch the messages printed during `make'.
-If they say that Perl is embeddable, good.  If not, have a peek at the
-emacs-20.3/build/config.log file for clues, and mail me any
-workarounds.
-
-
-PERLMACS AND Emacs::Lisp
-========================
-
-Perlmacs can evaluate Perl code and pass arguments to Perl functions.
-The code may use Perl modules, including DynaLoader modules.  However,
-to call Emacs Lisp functions or access Lisp variables, you need the
-Emacs::Lisp module.  The module is available in the same locations as
-Perlmacs.  See the file README in the Emacs::Lisp distribution for
-more information.
-
-Although the separation of Emacs::Lisp from the main Perlmacs
-distribution is intended to permit updates to either without requiring
-the other to be upgraded, currently there is rather strict version
-interdependency between the two packages, and also on Perl.  In the
-following table, each row represents a supported combination of
-versions:
-
-   Emacs::Lisp  GNU Emacs  Perl    Perlmacs
-   ===========  =========  ====    ========
-       0.80       20.3     5.005   0.7.1
-       0.84       20.3     5.005   0.8
-       0.88+      20.3     5.005   0.9.2+
-
-Of course, the most recent versions should be given preference
-whenever possible.
-
-Although I hope to master the use of Texinfo and/or SGML Tools one day
-and add Perlmacs documentation to the standard Emacs set, so far the
-best documentation is in the Emacs::Lisp module.
+If they say that Perl is embeddable, good.  If not, have a peek at
+emacs-20.3/build/config.log for clues, and mail me any workarounds.
 
 
 LICENSE
--------
-Copyright (C) 1998-1999 by John Tobey.  All rights reserved.
+=======
+
+Copyright (C) 1998-2000 by John Tobey.  All rights reserved.
 Copyright (C) 1998 Free Software Foundation, Inc.
 
 This software is distributed under the GNU General Public License,
@@ -122,9 +115,9 @@ version 2 or higher.  See the file COPYING for details.
 
 
 WARRANTY
---------
-Perlmacs is not developed for profit, so its authors can provide no
-warranty.
+========
+
+Perlmacs is free software, so it comes with no warranty.
 
     This software is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of

@@ -1,0 +1,179 @@
+/* Copyright (C) 1998,1999 by John Tobey.  All rights reserved.
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 2 of the License, or
+   (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; see the file COPYING.  If not, write to the
+   Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+   MA 02111-1307  USA
+*/
+
+
+/* FIXME:  Some Glibc ipc header needs this for Perl 5.005.  */
+#if !(defined _SVID_SOURCE || defined _XOPEN_SOURCE)
+#define _SVID_SOURCE
+#endif
+
+#include <EXTERN.h>
+#include <perl.h>
+#include <XSUB.h>
+
+#include "config.h"
+#include "lisp.h"
+#include <paths.h>
+#include "perlmacs.h"
+
+
+MODULE = Emacs		PACKAGE = Emacs
+
+int
+_main(...)
+	PROTOTYPE: @
+	CODE:
+	{
+	  char **argv;
+	  int i;
+	  int len;
+	  STRLEN n_a;
+
+	  if (items == 0)
+	    {
+	      items = 1;
+	      EXTEND (sp, 1);
+	      /* Use "$0" as the arg if none given.  */
+	      ST (0) = GvSV (Perl_gv_fetchpv("0", 1, SVt_PV));
+	    }
+
+	  argv = (char **) alloca ((items + 1) * sizeof (char *));
+	  for (i = 0; i < items; i ++)
+	    /* FIXME: Would it be too paranoid if we strdup() the args?  */
+	    argv [i] = SvPV (ST (i), n_a);
+	  argv [items] = 0;
+
+	  RETVAL = perlmacs_call_emacs_main (items, argv, 0);
+	}
+	OUTPUT:
+	RETVAL
+
+SV *
+constant(name)
+	char *name
+	CODE:
+	{
+	  if (strEQ (name, "PERLMACS_VERSION"))
+	    XSRETURN_PV (PERLMACS_VERSION);
+	  if (strEQ (name, "INCLUDE_PATH"))
+	    XSRETURN_PV (PATH_INCLUDESEARCH);
+	  XSRETURN_UNDEF;
+	}
+
+
+MODULE = Emacs		PACKAGE = Emacs::Lisp
+
+SV *
+funcall(...)
+	PROTOTYPE: $@
+	CODE:
+	{
+	  Lisp_Object *args, args_as_string, ret, tail;
+	  int i;
+
+	  args = (Lisp_Object *) alloca (items * sizeof (Lisp_Object));
+	  for (i = 0; i < items; i++)
+	    args [i] = perlmacs_sv_to_lisp (ST (i));
+
+	  ret = perlmacs_funcall (items, args);
+	  if (GIMME_V == G_VOID)
+	    RETVAL = &PL_sv_undef;
+	  else
+	    RETVAL = perlmacs_lisp_to_sv (ret);
+	}
+	OUTPUT:
+	RETVAL
+
+SV *
+lisp(sv)
+	SV *sv
+	PROTOTYPE: $
+	CODE:
+	RETVAL = perlmacs_lisp_as_sv (perlmacs_sv_as_lisp (sv));
+	OUTPUT:
+	RETVAL
+
+
+MODULE = Emacs		PACKAGE = Emacs::Lisp::Object
+
+# Perl's destructor for Lisp objects.  This has to be registered in Emacs and
+# not Emacs::Lisp's boot routine, because Perl may store Lisp references
+# (args to perl-call) without Emacs::Lisp being loaded.
+# Frame is Perl (pp_hot.c:Perl_pp_entersub from sv.c:sv_clear).
+void
+DESTROY(sv)
+	SV *sv
+	CODE:
+	{
+	  struct sv_lisp *prot = (struct sv_lisp *) SvIV (SvRV (sv));
+
+	  /* Remove our argument from the Perl interpreter's list of
+	     gc-protected objects.  */
+	  if (prot->prev)
+	    prot->prev->next = prot->next;
+	  else
+	    /* XXX Something's wrong with this:
+	    XSV_INTERP (sv)->protlist = prot->next; */
+	    {
+	      extern struct emacs_perl_interpreter *current_perl;
+	      current_perl->protlist = prot->next;
+	    }
+
+	  if (prot->next)
+	    prot->next->prev = prot->prev;
+	  xfree (prot);
+	}
+
+# This funcall is identical to Emacs::Lisp::funcall except in how the
+# returned value is converted to Perl.  Emacs::Lisp::funcall performs
+# meaningful conversions of similar types, including deep copying of
+# nested lists as arrayrefs.  Here we do not convert, we merely wrap.
+
+# FIXME: Common parts of the two funcalls should be factored out.
+
+SV *
+funcall(...)
+	PROTOTYPE: $@
+	CODE:
+	{
+	  Lisp_Object *args, args_as_string, ret, tail;
+	  int i;
+
+	  args = (Lisp_Object *) alloca (items * sizeof (Lisp_Object));
+	  for (i = 0; i < items; i++)
+	    args [i] = perlmacs_sv_to_lisp (ST (i));
+
+	  ret = perlmacs_funcall (items, args);
+	  if (GIMME_V == G_VOID)
+	    RETVAL = &PL_sv_undef;
+	  else
+	    RETVAL = perlmacs_lisp_as_sv (ret);
+	}
+	OUTPUT:
+	RETVAL
+
+SV *
+to_perl(sv)
+	SV *sv
+	PROTOTYPE: $
+	CODE:
+	if (! SV_LISPP (sv))
+	  Perl_croak ("Not a Lisp object");
+	RETVAL = perlmacs_lisp_to_sv (XSV_LISP (sv));
+	OUTPUT:
+	RETVAL

@@ -1,3 +1,15 @@
+New in Perlmacs 0.14:
+
+    * Support Perl 5.6.0.  (Emacs 20.3 is still required.)
+
+    * Bundle Emacs::Lisp with the distribution.
+
+    * Fix behavior of special Perl variables STDOUT, %ENV, etc. when
+      using Perl 5.6.0 ("print" inserts text in the buffer).
+
+    * Temporarily removed 0.13 Lisp interface while working on a
+      replacement.
+
 New in Perlmacs 0.13:
 
     * Added many Lisp functions for conveniently accessing Perl data.

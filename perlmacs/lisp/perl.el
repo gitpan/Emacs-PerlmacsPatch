@@ -1,5 +1,5 @@
 ;; perl.el -- interactive for Perl embedded in Emacs
-;; Copyright (C) 1998,1999 by John Tobey.  All rights reserved.
+;; Copyright (C) 1998,1999,2000 by John Tobey.  All rights reserved.
 
 ;; This file is NOT a part of GNU Emacs and is NOT distributed by
 ;; the Free Software Foundation.
@@ -25,47 +25,28 @@ See `make-perl-interpreter'.")
 (defun make-perl-interpreter (&rest cmdline)
   "Create and return a new Perl interpreter object.
 If arguments are given, they will be parsed as the interpreter's command
-line, with the first argument used as the invocation name.  Otherwise,
-the Perl command line will be (cons (car command-line-args)
-(append perl-interpreter-args '(\"-e0\"))).
+line, with the first argument used as the invocation name.  Otherwise, if
+`perl-interpreter-args' is non-nil, the command line will be the pmacs
+invocation name, followed by the list values in `perl-interpreter-args',
+followed by \"-e0\".  Otherwise, `perl-interpreter-args' defaults to
+'(\"-MEmacs\"), which causes the Emacs module to be loaded.
 
-It is important to include a script name or \"-e\" option when running
+It is important to include a script name or \"-e0\" option when running
 interactively, because otherwise Perl tries to read its script from the
-standard input.
+standard input.  It is a good idea to include \"-MEmacs\", as this makes
+some special Perl variables and functions behave in a manner appropriate
+for the Emacs environment.
 
 NOTE: Using multiple simultaneous Perl interpreters currently is
 not supported."
-;;; AARGH! what's wrong with highlighting and indentation here? "
   (prog1
-      (apply 'primitive-make-perl
-	     (or cmdline
-		 (cons (car command-line-args)  ; propagate argv[0]
-		       (append perl-interpreter-args '("-e0")))))
+      (let ((args (or perl-interpreter-args '("-MEmacs"))))
+	(apply 'primitive-make-perl
+	       (or cmdline
+		   (cons (car command-line-args)  ; propagate argv[0]
+			 (append perl-interpreter-args '("-e0"))))))
     ;; Alas, this hook isn't called in batch mode.
     (add-hook 'kill-emacs-hook 'perl-destruct)))
-
-;; Do some dynamic interface generation, because it makes the code cleaner.
-;; Maybe should go in an `eval-when-compile'?
-(mapcar
- (lambda (type)
-   (eval (list 'defun
-	       (intern (concat "perl-" type "-p"))
-	       '(object)
-	       (concat "Return t if OBJECT is a Perl " type ".")
-	       (list 'eq
-		     '(type-of object)
-		     (list 'quote
-			   (intern (concat "perl-" type)))))))
- '("interpreter"
-   "scalar"
-   "array"
-   "hash"
-   "code"
-   "glob"))
-
-;(defun perl-interpreter-p (object)
-;  "Return t if OBJECT is a Perl interpreter."
-;  (eq (type-of object) 'perl-interpreter))
 
 (defun perl-eval-expression (expression &optional prefix)
   "Evaluate EXPRESSION as Perl code and print its value in the minibuffer.

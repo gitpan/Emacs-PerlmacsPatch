@@ -1,16 +1,24 @@
 Known problems with Perlmacs:
 
-Crashes after repeatedly evaluating Perl code and calling
-`perl-destruct'. (maybe fixed)
+Crashes when converting circular structures.
 
-After `M-x perl-load-file t/40_error.t': panic: restartop
+On some machines, crashes or fails to start up when DISPLAY is set.
+Perhaps only X11R5.
+
+After `M-x perl-load-file t/40_error.t': panic: restartop (fixed?)
 
 Error context reporting does a full stack trace instead of a simple
 Carp::croak.
 
-Scalar leaked after error in "use Blah;". (maybe fixed)
+GCC warns about incompatible pointer types in alloc.c.
 
-Compiler warns about incompatible pointer types in alloc.c.
+emacs-perlmacs.diff contains problematic stuff /^(Only|diff)/ Also,
+Makefile.PL should chmod -R u+w emacs-20.3 after unzipping for the
+benefit of older Patch programs.
 
-`perl-eval' doesn't propagate syntax errors.  Instead, it reports them
-to stderr.
+Circular dependencies in Makefile:
+make[1]: Circular src <- perl/Makefile dependency dropped.
+make[1]: Circular src <- lib-src dependency dropped.
+
+`make install' prints error messages from `install-info'.  This also
+affects unpatched emacs-20.3.

@@ -10,6 +10,7 @@ dnl If perl works, $ac_cv_prog_perl_version will hold its version number.
 AC_DEFUN(AC_PROG_PERL,
 [AC_BEFORE([$0], AC_EMBED_PERL)dnl
 AC_BEFORE([$0], AC_PROG_PERL_XS)dnl
+AC_BEFORE([$0], AC_PROG_XSUBPP)dnl
 AC_CHECK_PROG(PERL, perl, perl)
 if test -n "$PERL"; then
   AC_PROG_PERL_VERSION
@@ -60,8 +61,8 @@ else
 dnl FIXME: Maybe should rework this, in case ccopts or ldopts contain
 dnl problematic characters for quoting.
       [ac_cv_embed_perl="ac_embed_perl=yes \
-			 PERL_CCOPTS=\"$PERL_CCOPTS\" \
-			 PERL_LDOPTS=\"$PERL_LDOPTS\""],
+			 PERL_CCOPTS='$PERL_CCOPTS' \
+			 PERL_LDOPTS='$PERL_LDOPTS'"],
       [ac_cv_embed_perl="ac_embed_perl=no PERL_CCOPTS= PERL_LDOPTS="])
     CFLAGS="$ac_save_CFLAGS"
     LIBS="$ac_save_LIBS"
@@ -70,38 +71,3 @@ dnl problematic characters for quoting.
 fi
 AC_MSG_RESULT($ac_embed_perl)
 ])
-
-dnl Check for the ability to build Perl XS modules.
-dnl If this is possible, $ac_cv_prog_perl_xs will be "yes", else "no".
-AC_DEFUN(AC_PROG_PERL_XS,
-[AC_CACHE_CHECK([for working Perl XS compiler],
-ac_cv_prog_perl_xs,
-[ac_cv_prog_perl_xs=no
-if mkdir conftest; then
-cd conftest
-cat > Makefile.PL <<EOF
-use ExtUtils::MakeMaker;
-WriteMakefile(
-    'NAME'	=> 'AC::Test',
-);
-EOF
-cat > Test.pm << EOF
-package AC::Test;
-require DynaLoader;
-@ISA = qw(DynaLoader);
-bootstrap AC::Test '0.01';
-1;
-EOF
-cat > Test.xs << EOF
-#include <EXTERN.h>
-#include <perl.h>
-#include <XSUB.h>
-MODULE = AC::Test	PACKAGE = AC::Test
-EOF
-if ${PERL-perl} Makefile.PL 1>&5 2>&5 && ${MAKE-make} 1>&5 2>&5; then
-  ac_cv_prog_perl_xs=yes
-fi
-cd ..
-rm -fr conftest
-fi
-])])

@@ -1,5 +1,5 @@
-/* Support for calling Perl from Lisp.
-   Copyright (c) 1998,1999 by John Tobey.  All rights reserved.
+/* Passing data and execution control between Perl and Lisp.
+   Copyright (c) 1998,1999,2000 by John Tobey.  All rights reserved.
 
 This file is *NOT* part of GNU Emacs.
 However, this file may be distributed and modified under the same
@@ -21,14 +21,13 @@ the Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
 
-/* FIXME:  Some Glibc ipc header needs this.  */
+/* FIXME:  Some Glibc ipc header needs this for Perl 5.005.  */
 #if !(defined _SVID_SOURCE || defined _XOPEN_SOURCE)
 #define _SVID_SOURCE
 #endif
 
 #include "config.h"  /* ...hoping this is Emacs' config, not Perl's! */
 #include "lisp.h"
-#include <paths.h>
 
 #include <EXTERN.h>
 #include <perl.h>
@@ -38,118 +37,44 @@ Boston, MA 02111-1307, USA.  */
 #include <setjmp.h>
 #include "eval.h"
 
-/* Node in a doubly-linked list of Perl references to Lisp objects.
-   Each such reference holds a pointer to a struct sv_lisp.
-   They are linked together for marking during gc.  */
-struct sv_lisp
-  {
-    Lisp_Object obj;		/* must be first */
-    SV *prev;
-    SV *next;
-  };
-#define SV_LISP_NEXT(sv) (((struct sv_lisp *) SvIVX (sv))->next)
-#define SV_LISP_PREV(sv) (((struct sv_lisp *) SvIVX (sv))->prev)
+#ifdef PERL_REVISION
+#  if PERL_REVISION >= 5 && PERL_VERSION >= 6
+#    define HAVE_PERL_5_6
+#  endif
+#endif
 
-/* FIXME: I suspect we can do without struct perl_frame.  */
-struct perl_frame
-  {
-    /* Link to next outer stack frame.  */
-    struct lisp_frame *prev;
-
-    /* Value of PL_top_env on frame entry and exit.  */
-    JMPENV *old_top_env;
-
-    /* Whether call_perl will happen in this frame.
-       (call_perl entails some complexity.)  */
-    char need_jmpenv;
-  };
-
-struct lisp_frame
-  {
-    /* Link to next outer stack frame.  */
-    struct perl_frame *prev;
-
-    /* Argument for JMPENV_JUMP.  */
-    int jumpret;
-
-    /* The Lisp error data during a Lisp exception.  */
-    Lisp_Object lisp_error;
-  };
-
-struct perl_interpreter_object
-  {
-    PerlInterpreter *interp;
-
-    /* The int returned by perl_parse() or perl_run().  Not gcpro'd.  */
-    Lisp_Object status;
-
-    /* One of Qparsing, Qparsed, Qrunning, Qran, Qdestructing, Qdestructed,
-       and Qbad.  Not gcpro'd  */
-    Lisp_Object phase;
-
-    /* Doubly linked list of Lisp objects referenced in Perl (for GC).  */
-    SV *protlist;
-
-    /* Analogous to PL_start_env and PL_top_env (see scope.h).  */
-    union either_frame
-      {
-	struct lisp_frame l;
-	struct perl_frame p;
-      } start;
-
-    union either_framep
-      {
-	struct lisp_frame *l;
-	struct perl_frame *p;
-      } top;
-
-    /* The Emacs::Lisp::Object stash, cached for performance.
-       No ref is held, and god forbid anyone should delete it!  */
-    HV *elo_stash;
-
-    /* Hack so that we know whether to return to perl_call_emacs_main
-       when `kill-emacs' is called.  */
-    char in_emacs_main;
-  };
-
-struct perl_interpreter_object *top_level_perl, *current_perl;
+struct emacs_perl_interpreter *top_level_perl, *current_perl;
 EXFUN (Fperl_destruct, 1);
+typedef Lisp_Object (*sv_to_lisp_converter_t) P_ ((SV *sv));
 static Lisp_Object internal_perl_call P_ ((int nargs, Lisp_Object *args,
 					   int do_eval,
-					   Lisp_Object (*conv) P_ ((SV *sv))));
+					   sv_to_lisp_converter_t conv));
 static void init_perl ();
 
 #define INIT_PERL do { if (!current_perl) init_perl (); } while (0)
 
-/* We will need a way to find the interpreter that owns a given SV.
-   Currently, multiple interpreters are not supported, so just return
-   the global interpreter.  */
-#define PERLMACS_SV_INTERP(sv) current_perl
+#define PERL_IS_TOP_LEVEL(perl) (perl == top_level_perl)
 
-#define CHECK_PERL(obj)					\
+#define CHECK_PERL_INTERPRETER(obj)			\
   { if (! FOREIGN_OBJECTP (obj)				\
 	|| XFOREIGN_OBJECT (obj)->vptr != &interp_vtbl)	\
       wrong_type_argument (Qperl_interpreter, obj); }
-#define XPERL_INTERPRETER(obj)						\
-   ((struct perl_interpreter_object *) (XFOREIGN_OBJECT (obj)->data))
 
 /* How to tell when a Perl object's interpreter is no longer usable.  */
 #define LISP_SV_INTERP(obj)					\
    (XPERL_INTERPRETER (XFOREIGN_OBJECT (obj)->lisp_data))
 #define PERL_DEFUNCT_P(perl)			\
-   (EQ ((perl)->phase, Qdestructed)		\
-    || EQ ((perl)->phase, Qbad))
+   (EQ ((perl)->phase, Qdestructed))
 
 #define CACHE_ELO_STASH(perl)						\
    { if (! perl->elo_stash)						\
        perl->elo_stash = Perl_gv_stashpv ("Emacs::Lisp::Object", 1); }
 #define BARE_SV_LISPP(sv)						 \
-   (SvOBJECT (sv) && SvSTASH (sv) == PERLMACS_SV_INTERP (sv)->elo_stash)
+   (SvOBJECT (sv) && SvSTASH (sv) == current_perl->elo_stash)
 #define XBARE_SV_LISP(sv) (*((Lisp_Object *) SvIVX (sv)))
-#define FAST_SV_LISPP(sv) (SvROK (sv) && BARE_SV_LISPP (SvRV (sv)))
 
 #define LISP_SVP(obj)							  \
-   (FOREIGN_OBJECTP (obj) && XFOREIGN_OBJECT (obj)->vptr == &generic_vtbl)
+   (FOREIGN_OBJECTP (obj) && XFOREIGN_OBJECT (obj)->vptr == &sv_vtbl)
 #define XLISP_SV(obj)				\
    ((SV *) XFOREIGN_OBJECT (obj)->data)
 
@@ -158,14 +83,13 @@ static void init_perl ();
     && XFOREIGN_OBJECT (obj)->vptr->type_of == lisp_sv_type_of)
 
 
-static Lisp_Object perl_interpreter, Qperl_interpreter;
+static Lisp_Object Vperl_interpreter, Qperl_interpreter, Qperl_value;
 static Lisp_Object Qmake_perl_interpreter, Qperl_error;
 static Lisp_Object Qvoid_context, Qscalar_context, Qlist_context;
-Lisp_Object Qparsing, Qparsed, Qran, Qdestructed, Qbad;
+static Lisp_Object Qparsing, Qparsed, Qran, Qdestructed;
 
 static struct Lisp_Foreign_Object_VTable interp_vtbl;
-static struct Lisp_Foreign_Object_VTable generic_vtbl;
-static struct Lisp_Foreign_Object_VTable code_vtbl;
+static struct Lisp_Foreign_Object_VTable sv_vtbl;
 
 /* For returning from `Emacs::main'.  */
 static struct catchtag perlmacs_catch;
@@ -177,11 +101,14 @@ pop_lisp_frame (interp)
      Lisp_Object interp;
 {
   struct lisp_frame *lfp;
+  struct emacs_perl_interpreter *perl;
 
-  lfp = XPERL_INTERPRETER (interp)->top.l;
+  lfp = XPERL_INTERPRETER (interp)->frame_l;
   if (lfp->prev && lfp->prev->prev)
     lfp->prev->prev->lisp_error = lfp->lisp_error;
-  XPERL_INTERPRETER (interp)->top.p = lfp->prev;
+  perl = XPERL_INTERPRETER (interp);
+  perl->frame_l = 0;
+  perl->frame_p = lfp->prev;
   return make_number (0);
 }
 
@@ -191,11 +118,12 @@ static void
 push_lisp_frame (lfp)
      struct lisp_frame *lfp;
 {
-  lfp->prev = current_perl->top.p;
+  lfp->prev = current_perl->frame_p;
   lfp->jumpret = 0;
   lfp->lisp_error = Qnil;
-  current_perl->top.l = lfp;
-  record_unwind_protect (pop_lisp_frame, perl_interpreter);
+  current_perl->frame_p = 0;
+  current_perl->frame_l = lfp;
+  record_unwind_protect (pop_lisp_frame, Vperl_interpreter);
 }
 
 /* Frame is Perl (Emacs.xs:_main).  */
@@ -207,7 +135,7 @@ perlmacs_call_emacs_main (argc, argv, envp)
 {
   struct lisp_frame lf;
 
-  if (current_perl->top.p->prev)
+  if (current_perl->frame_p->prev)
     Perl_croak ("Attempt to enter Emacs recursively");
 
   push_lisp_frame (&lf);
@@ -245,25 +173,6 @@ perlmacs_exit (status)
   Perl_my_exit (status);
 }
 
-/* Frame is Perl (Lisp.xs:BOOT).  */
-void
-perlmacs_init ()
-{
-  if (top_level_perl)
-    {
-      char *dummy_argv[] = { "perl", 0 };
-
-      perl_interpreter = new_foreign_object (&interp_vtbl, top_level_perl,
-					     make_number (0));
-
-      /* May be overridden during Emacs::main.  */
-      noninteractive = 1;
-
-      init_lisp (1, dummy_argv, 0);
-    }
-  CACHE_ELO_STASH (current_perl);
-}
-
 /* Frame is none (emacs.c:emacs_main)
    or Perl (Emacs.pm:main by way of emacs.c:emacs_main).  */
 void
@@ -285,27 +194,20 @@ perlmacs_init_lisp (argc, argv, skip_args)
 /* Frame is Lisp
    (perlmacs_funcall by way of eval.c:internal_condition_case_1).  */
 static Lisp_Object
-funcall_1 (args_as_string)
-     Lisp_Object args_as_string;
+funcall_1 (argv)
+     Lisp_Object argv;
 {
-  int nargs, len;
-  Lisp_Object *args;
   Lisp_Object retval;
   struct gcpro gcpro1;
+  struct Lisp_Vector *v = XVECTOR (argv);
   struct lisp_frame *lfp;
 
-  len = XSTRING (args_as_string)->size;
-  nargs = len / sizeof (Lisp_Object);
-  args = (Lisp_Object *) alloca (len);  /* paranoid about alignment */
-  bcopy (XSTRING (args_as_string)->data, args, len);
-
-  GCPRO1 (*args);
-  gcpro1.nvars = nargs;  /* I got this from Fapply().  */
-  retval = Ffuncall (nargs, args);
+  GCPRO1 (argv);
+  retval = Ffuncall (v->size, v->contents);
   UNGCPRO;
 
   /* If there are errors, we don't arrive here.  */
-  lfp = current_perl->top.l;
+  lfp = current_perl->frame_l;
   lfp->lisp_error = Qnil;
   lfp->jumpret = 0;
   return retval;
@@ -322,18 +224,18 @@ static Lisp_Object
 perlmacs_error_handler (e)
      Lisp_Object e;
 {
-  current_perl->top.l->lisp_error = e;
+  current_perl->frame_l->lisp_error = e;
   return make_number (0);
 }
 
 /* Frame is Perl
    (Lisp.xs: Emacs::Lisp::funcall or Emacs::Lisp::Object::funcall).  */
+/* Call Ffuncall safely from Perl.  */
 Lisp_Object
 perlmacs_funcall (nargs, args)
      int nargs;
      Lisp_Object *args;
 {
-  Lisp_Object args_as_string;
   struct lisp_frame lf;
   Lisp_Object retval;
   int count = specpdl_ptr - specpdl;
@@ -342,12 +244,7 @@ perlmacs_funcall (nargs, args)
      jump.  */
   push_lisp_frame (&lf);
 
-  /* Package the arg list into a single Lisp object for
-     internal_condition_case_1.  Using a string is probably more efficient
-     than using a list.  */
-  args_as_string = make_unibyte_string ((char *) args,
-					nargs * sizeof (Lisp_Object));
-  retval = internal_condition_case_1 (funcall_1, args_as_string,
+  retval = internal_condition_case_1 (funcall_1, Fvector (nargs, args),
 				      Qerror, perlmacs_error_handler);
 
   /* Return to the Perl frame.  */
@@ -358,7 +255,17 @@ perlmacs_funcall (nargs, args)
       dTHR;
       if (lf.jumpret == 3)
 	/* There was a Perl error.  Pop Perl's state to the last `eval'.  */
-	PL_restartop = Perl_die_where (PL_in_eval ? 0 : SvPV (ERRSV, PL_na));
+	{
+	  STRLEN len;
+	  char *message;
+
+	  message = SvPV (ERRSV, len);
+#ifdef HAVE_PERL_5_6
+	  PL_restartop = Perl_die_where (PL_in_eval ? 0 : message, len);
+#else
+	  PL_restartop = Perl_die_where (PL_in_eval ? 0 : message);
+#endif
+	}
 
       JMPENV_JUMP (lf.jumpret);
     }
@@ -390,18 +297,18 @@ perlmacs_funcall (nargs, args)
   return retval;
 }
 
-/* Frame is Perl (eval.c:unbind_to, from call_perl or,
+/* Frame is Perl (eval.c: unbind_to, from call_perl or,
    indirectly, abort_perl_call).
    Return to Lisp.  */
 static Lisp_Object
 pop_perl_frame (interp)
      Lisp_Object interp;
 {
-  struct perl_interpreter_object *perl;
+  struct emacs_perl_interpreter *perl;
   struct perl_frame *pfp;
 
   perl = XPERL_INTERPRETER (interp);
-  pfp = perl->top.p;
+  pfp = perl->frame_p;
 
   if (pfp->need_jmpenv && ! PERL_DEFUNCT_P (perl))
     {
@@ -415,12 +322,14 @@ pop_perl_frame (interp)
 
 	  Perl_dounwind (0);
 
-	  /* This code is a copy of parts of pp_ctl.c:pp_leavetry.  */
+	  /* This code is a copy of parts of pp_ctl.c: pp_leavetry.  */
 	  POPBLOCK (cx, PL_curpm);
 	  POPEVAL (cx);
 	  sp = newsp;
 	  LEAVE;
 	}
+      FREETMPS;  /* FIXME: Should we do this elsewhere too/instead?
+		    Maybe in perl-run and primitive-make-perl?  */
 
       /* Work around Perl's shyness of core dumps ("panic: POPSTACK").  */
       if (! PL_curstackinfo->si_prev)
@@ -433,7 +342,8 @@ pop_perl_frame (interp)
       PL_top_env = pfp->old_top_env;
     }
 
-  perl->top.l = pfp->prev;
+  perl->frame_p = 0;
+  perl->frame_l = pfp->prev;
   return make_number (0);
 }
 
@@ -451,25 +361,25 @@ push_perl_frame (struct perl_frame *pfp, char need_jmpenv)
   if (EQ (emacs_phase, Qdestructing))
     error ("Attempt to enter Perl while exiting Emacs");
 
-  pfp->prev = current_perl->top.l;
-  current_perl->top.p = pfp;
-  record_unwind_protect (pop_perl_frame, perl_interpreter);
+  pfp->prev = current_perl->frame_l;
+  current_perl->frame_l = 0;
+  current_perl->frame_p = pfp;
+  record_unwind_protect (pop_perl_frame, Vperl_interpreter);
 
   pfp->need_jmpenv = need_jmpenv;
   if (! need_jmpenv)
     return;
 
   /* Save the Perl's top longjmp structure pointer.
+
      Normally, this isn't necessary, because pop_perl_frame has only one
-     JMPENV to pop and could do `PL_top_env = PL_top_env->je_prev'.
-     But I have seen this code
+     JMPENV to pop, and we could use JMPENV_POP in the frame that uses
+     JMPENV_PUSH.  But a Lisp `throw' bypasses Perl's jump levels.
 
-	 catch \*::foo, sub { &perl_eval (q(&throw(\*::foo, 345))) }
-
-     result in PL_top_env pointing below the stack pointer.  (Or above
-     it, if you are standing on your head.  On the wrong side, anyway.)
-
-     I have not figured out whether this is due to a bug in my code.  */
+     FIXME: Maybe when popping frames during a throw, we should force
+     a return to the next outer jump level so that Perl code which expects
+     this will work.  Maybe Fthrow should be changed to support a
+     "catchall".  */
   pfp->old_top_env = PL_top_env;
 
   /* PUSHSTACK saves and resets PL_curstack, PL_stack_base, PL_stack_sp,
@@ -506,8 +416,7 @@ push_perl_frame (struct perl_frame *pfp, char need_jmpenv)
       PL_op = 0;
   }
   PL_in_eval = 1;
-  sv_setpv (ERRSV, "");
-  /*PUTBACK;*/ if (PL_stack_sp != sp) abort ();
+  Perl_sv_setpv (ERRSV, "");
 }
 
 /* Frame is Perl (perlmacs.c:call_perl).
@@ -516,7 +425,7 @@ static void
 abort_perl_call (jumpret)
      int jumpret;
 {
-  struct perl_frame *pfp = current_perl->top.p;
+  struct perl_frame *pfp = current_perl->frame_p;
   Lisp_Object err;
   int len;
 
@@ -542,35 +451,37 @@ abort_perl_call (jumpret)
     {
       len = STRING_BYTES (XSTRING (err)) - 1;
       if (XSTRING (err)->data [len] == '\n')
-	/* XXX See if a space looks any better than ^J.
-	   I'm scared to shorten Lisp's strings from under its feet.  */
+	/* FIXME: Would it be okay to shorten a Lisp string in place?
+	   If so, we could avoid the ' ' between . and "  */
 	XSTRING (err)->data [len] = ' ';
     }
   Fsignal (Qperl_error, Fcons (err, Qnil));
 }
 
-/* Frame is Perl (perlmacs.c:call_perl).
-   Convert the value or values (if any) returned by `perl-call' or `perl-eval'
-   to a Lisp object.  */
+/* Frame is Perl (perlmacs.c: call_perl).
+   Convert the value or values returned by Perl to a Lisp object.
+   CALL_PERL leaves the values on the Perl stack for us to pick up.
+   This function implements the Lisp semantics of Perl's contexts
+   (scalar, list, void).  */
 static Lisp_Object
 perlmacs_retval (ctx, numret, conv)
      I32 ctx;
      I32 numret;
-     Lisp_Object (*conv) P_ ((SV *sv));
+     sv_to_lisp_converter_t conv;
 {
   Lisp_Object *vals;
   int i;
 
-  switch (ctx & (G_VOID | G_SCALAR | G_ARRAY))
+  switch (ctx)
     {
-    case G_VOID:
+    default:  /* G_VOID */
       return Qnil;
     case G_SCALAR:
       {
 	dTHR;
 	return (*conv) (*PL_stack_sp);
       }
-    default:  /* G_ARRAY */
+    case G_ARRAY:
       if (numret == 0)
 	return Qnil;
       {
@@ -590,19 +501,19 @@ enum perl_entry
     PERL_EVAL_SV,
     SV_FREE,
     EVAL_AND_CALL,
-    CALL_RAW
+    PERL_MG_GET
   };
 
 /* Frame is Perl (perlmacs.c, multiple functions).
    Call the specified Perl API function and pop to the previous Lisp frame.  */
-/* Note: Perl 5.005 requires stdarg.  */
+/* Note: Perl 5.005 already requires stdarg.  */
 static Lisp_Object
 call_perl (enum perl_entry entry, ...)
 {
   va_list ap;
   SV *sv;
   I32 ctx;
-  Lisp_Object (*conv) P_ ((SV *sv));
+  sv_to_lisp_converter_t conv;
   char *str;
   dJMPENV;
   dTHR;
@@ -612,7 +523,7 @@ call_perl (enum perl_entry entry, ...)
   struct lisp_frame *lfp;
   int count;
 
-  /* Subtract 1 for the record_unwind_protect in push_perl_frame.  */
+  /* Subtract 1 for the record_unwind_protect in PUSH_PERL_FRAME.  */
   count = specpdl_ptr - specpdl - 1;
 
   /* JMPENV_PUSH does sigsetjmp and ensures that, unless the process gets
@@ -620,7 +531,7 @@ call_perl (enum perl_entry entry, ...)
      Perl calls longjmp with an arg of 3 in the case of eval errors
      and 2 when it wants to exit.
      (However, Lisp is not as nice, and fails to provide a way to catch
-     every possible `throw'.)  */
+     every possible `throw'.  See the comments in PUSH_PERL_FRAME.)  */
   JMPENV_PUSH (ret);
   if (ret)
     abort_perl_call (ret);
@@ -631,8 +542,10 @@ call_perl (enum perl_entry entry, ...)
     case PERL_EVAL_SV:
       sv = va_arg (ap, SV *);
       ctx = va_arg (ap, I32);
-      conv = va_arg (ap, void *);
+      conv = va_arg (ap, sv_to_lisp_converter_t);
 
+      /* perl_eval_sv() doesn't support the lack of G_EVAL, so we must
+	 check the value of $@ and "die" if it is true.  */
       numret = perl_eval_sv (sv, ctx);
       if (SvTRUE (ERRSV))
 	abort_perl_call (3);
@@ -642,7 +555,7 @@ call_perl (enum perl_entry entry, ...)
     case PERL_CALL_SV:
       sv = va_arg (ap, SV *);
       ctx = va_arg (ap, I32);
-      conv = va_arg (ap, void *);
+      conv = va_arg (ap, sv_to_lisp_converter_t);
 
       numret = perl_call_sv (sv, ctx);
       retval = perlmacs_retval (ctx, numret, conv);
@@ -672,46 +585,24 @@ call_perl (enum perl_entry entry, ...)
       Perl_sv_free (sv);
       retval = Qnil;
       break;
+
+    case PERL_MG_GET:
+      sv = va_arg (ap, SV *);
+
+      Perl_mg_get (sv);
+      retval = Qnil;
+      break;
     }
   va_end (ap);
 
   /* Indicate to perlmacs_funcall that there were no errors.  */
-  lfp = current_perl->top.p->prev;
+  lfp = current_perl->frame_p->prev;
   lfp->lisp_error = Qnil;
   lfp->jumpret = 0;
 
   return unbind_to (count, retval);
 }
 
-DEFUN ("get-perl-interpreter", Fget_perl_interpreter, Sget_perl_interpreter,
-  0, 0, 0,
-  "Return the current Perl interpreter object, or `nil' if there is none.")
-  ()
-{
-  return perl_interpreter;
-}
-
-DEFUN ("set-perl-interpreter", Fset_perl_interpreter, Sset_perl_interpreter,
-  1, 1, 0,
-  "Make INTERPRETER the current Perl interpreter.\n\
-\n\
-Returns its argument.")
-  (interpreter)
-     Lisp_Object interpreter;
-{
-  CHECK_PERL (interpreter);
-
-  /* Multiple Perl interpreters are not supported.  */
-  if (XPERL_INTERPRETER (interpreter) != current_perl)
-    abort ();
-
-  /* But if they were supported, here's a tiny fraction of what we
-     would do:  */
-  current_perl = XPERL_INTERPRETER (interpreter);
-  perl_interpreter = interpreter;
-  return interpreter;
-}
-
 /* Perl interpreter foreign object methods.  Frame is always Lisp.  */
 
 static Lisp_Object
@@ -725,30 +616,29 @@ static void
 lisp_perl_destroy (object)
      Lisp_Object object;
 {
-  struct perl_interpreter_object *perl = XPERL_INTERPRETER (object);
+  struct emacs_perl_interpreter *perl = XPERL_INTERPRETER (object);
 
-  if (EQ (emacs_phase, Qdestructing))
+  if (EQ (emacs_phase, Qdestructing) && PERL_IS_TOP_LEVEL (perl))
     {
       /* Emacs is shutting down.  All Perl references to Lisp objects
 	 are becoming invalid, so undef them.  */
-      SV *sv, *tmp;
-      struct sv_lisp *prot;
+      struct sv_lisp *prot, *tmp;
 
-      for (sv = perl->protlist; sv; sv = tmp)
+      for (prot = perl->protlist; prot; prot = tmp)
 	{
-	  tmp = SV_LISP_NEXT (sv);
+	  tmp = prot->next;
 
 	  /* Disable the DESTROY method.  */
-	  SvOBJECT_off (sv);
+	  SvOBJECT_off (prot->sv);
 
-	  xfree ((Lisp_Object *) SvIVX (sv));
-	  Perl_sv_setsv (sv, &PL_sv_undef);
+	  Perl_sv_setsv (prot->sv, &PL_sv_undef);
+	  xfree (prot);
 	}
-      /* Don't continue with perl_destruct; it's not safe.  */
-      return;
     }
 
-  if (perl == top_level_perl)
+  /* FIXME: Should test for the Perl that ran Emacs, not just the
+     top level Perl.  */
+  if (EQ (emacs_phase, Qdestructing) || PERL_IS_TOP_LEVEL (perl))
     return;
 
   /* We can't get here from within a Perl call, because this function
@@ -757,23 +647,26 @@ lisp_perl_destroy (object)
   if (! PERL_DEFUNCT_P (perl))
     Fperl_destruct (object);
   perl_free (perl->interp);
+  PL_curinterp = 0;
   xfree (perl);
+  if (perl == current_perl)
+    current_perl = 0;
 }
 
 static void
 lisp_perl_mark (object)
      Lisp_Object object;
 {
-  struct perl_interpreter_object *perl;
-  SV *sv;
+  struct emacs_perl_interpreter *perl;
+  struct sv_lisp *prot;
   struct lisp_frame *lfp;
 
   perl = XPERL_INTERPRETER (object);
-  for (sv = perl->protlist; sv; sv = SV_LISP_NEXT (sv))
-    mark_object ((Lisp_Object *) SvIVX (sv));
+  for (prot = perl->protlist; prot; prot = prot->next)
+    mark_object (&prot->obj);
 
   /* Mark error data from pending exceptions.  */
-  for (lfp = perl->top.l; lfp; lfp = (lfp->prev ? lfp->prev->prev : 0))
+  for (lfp = perl->frame_l; lfp; lfp = (lfp->prev ? lfp->prev->prev : 0))
     mark_object (&lfp->lisp_error);
 }
 
@@ -787,54 +680,13 @@ static struct Lisp_Foreign_Object_VTable interp_vtbl =
     0				/* CALL */
   };
 
-/* Perl's destructor for Lisp objects.  This has to be registered in Emacs and
-   not Emacs::Lisp's boot routine, because Perl may store Lisp references
-   (args to perl-call) without Emacs::Lisp being loaded.  */
-/* Frame is Perl (pp_hot.c:Perl_pp_entersub from sv.c:sv_clear).  */
-static
-XS (XS_Emacs__Lisp__Object_DESTROY)
-{
-  dXSARGS;
-  SV *sv = SvRV (ST (0));
-  struct sv_lisp *prot = (struct sv_lisp *) SvIV (sv);
-
-  /* Remove our argument from the Perl interpreter's list of gc-protected
-     objects.  */
-  if (prot->prev)
-    SV_LISP_NEXT (prot->prev) = prot->next;
-  else
-    PERLMACS_SV_INTERP (sv)->protlist = prot->next;
-
-  if (prot->next)
-    SV_LISP_PREV (prot->next) = prot->prev;
-  xfree (prot);
-
-  XSRETURN_EMPTY;
-}
-
-static
-XS (XS_Emacs__constant)
-{
-  dXSARGS;
-  char *name;
-
-  if (items != 1)
-    Perl_croak ("Usage: Emacs::constant(name)");
-
-  name = SvPV (ST (0), PL_na);
-  if (strEQ (name, "PERLMACS_VERSION"))
-    XSRETURN_PV (PERLMACS_VERSION);
-  if (strEQ (name, "INCLUDE_PATH"))
-    XSRETURN_PV (PATH_INCLUDESEARCH);
-  XSRETURN_UNDEF;
-}
-
 /* Perl initialization callback passed as argument to perl_parse().
    Frame is Perl (perl.c:perl_parse).  */
 static void
 perlmacs_xs_init ()
 {
   extern void xs_init P_ ((void));
+  extern XS (boot_Emacs);
 
   /* Set PL_perl_destruct_level here and not in syms_of_perlmacs because
      PL_perl_destruct_level may be a macro that dereferences a pointer
@@ -853,41 +705,49 @@ perlmacs_xs_init ()
      perlxsi.c.  */
   xs_init ();
 
-  newXS ("Emacs::Lisp::Object::DESTROY",
-	 XS_Emacs__Lisp__Object_DESTROY, __FILE__);
-  newXS ("Emacs::constant",
-	 XS_Emacs__constant, __FILE__);
+  /* Define our own XSubs from xs/perlxs.xs.  */
+  newXS ("Emacs::boot_Emacs", boot_Emacs, __FILE__);
+
+  if (PERL_IS_TOP_LEVEL (current_perl))
+    {
+      /* If this ever fails to work because PL_origargv goes away,
+	 just save argv[0] somewhere and use it here.  */
+      char *dummy_argv[] = { PL_origargv [0], 0 };
+      STRLEN n_a;
+
+      Vperl_interpreter = new_foreign_object (&interp_vtbl, current_perl,
+					      make_number (0));
+
+      /* May be overridden by EMACS_MAIN.  */
+      noninteractive = 1;
+
+      init_lisp (1, dummy_argv, 0);
+    }
+  CACHE_ELO_STASH (current_perl);
 }
 
 /* Construct an interpreter object and the underlying Perl interpreter.
    Frame is Lisp (Fmake_perl_interpreter) or none (perlmacs_main).  */
-static struct perl_interpreter_object *
+static struct emacs_perl_interpreter *
 new_perl (in_lisp)
      int in_lisp;
 {
-  struct perl_interpreter_object *perl;
+  struct emacs_perl_interpreter *perl;
 
-  perl = (struct perl_interpreter_object *)
-    xmalloc (sizeof (struct perl_interpreter_object));
+  perl = (struct emacs_perl_interpreter *)
+    xmalloc (sizeof (struct emacs_perl_interpreter));
   bzero (perl, sizeof *perl);
 
   perl->interp = perl_alloc ();
-  if (! perl->interp)
-    {
-      if (in_lisp)
-	Fsignal (Qerror, memory_signal_data);
-      else
-	exit (1);
-    }
   perl_construct (perl->interp);
 
   if (in_lisp)
     {
-      perl->top.l = &perl->start.l;
-      perl->top.l->lisp_error = Qnil;
+      perl->frame_l = &perl->start.l;
+      perl->frame_l->lisp_error = Qnil;
     }
   else
-    perl->top.p = &perl->start.p;
+    perl->frame_p = &perl->start.p;
 
   perl->status = make_number (0);
   return perl;
@@ -906,21 +766,20 @@ perlmacs_main (argc, argv, env)
   PERL_SYS_INIT (&argc, &argv);
   perl_init_i18nl10n (1);
 
-  top_level_perl = new_perl (0);
-  current_perl = top_level_perl;
-  top_level_perl->phase = Qparsing;
-  status = perl_parse (top_level_perl->interp, perlmacs_xs_init,
+  top_level_perl = current_perl = new_perl (0);
+  current_perl->phase = Qparsing;
+  status = perl_parse (current_perl->interp, perlmacs_xs_init,
 		       argc, argv, 0);
 
   if (! status)
     {
-      top_level_perl->phase = Qrunning;
-      status = perl_run (top_level_perl->interp);
+      current_perl->phase = Qrunning;
+      status = perl_run (current_perl->interp);
     }
 
-  top_level_perl->phase = Qdestructing;
-  perl_destruct (top_level_perl->interp);
-  perl_free (top_level_perl->interp);
+  current_perl->phase = Qdestructing;
+  perl_destruct (current_perl->interp);
+  perl_free (current_perl->interp);
 
   PERL_SYS_TERM ();
   return status;
@@ -936,15 +795,17 @@ Create and return a new Perl interpreter object.")
 {
   char *def_argv[] = { "pmacs", "-e0" };
   char **argv;
-  struct perl_interpreter_object *perl;
+  struct emacs_perl_interpreter *perl;
   Lisp_Object this_perl;
   struct perl_frame pf;
   int count = specpdl_ptr - specpdl;
   struct gcpro gcpro1;
   int i;
 
+#ifndef MULTIPLICITY
   if (current_perl)
     error ("Multiple Perl interpreters are not supported");
+#endif
 
   if (nargs)
     {
@@ -973,26 +834,17 @@ Create and return a new Perl interpreter object.")
 
   perl->phase = Qparsing;
   current_perl = perl;
-  perl_interpreter = this_perl;
+  Vperl_interpreter = this_perl;
   push_perl_frame (&pf, 0);
 
   GCPRO1 (this_perl);
   perl->status =
     make_number (perl_parse (perl->interp, perlmacs_xs_init, nargs, argv, 0));
 
-  if (! EQ (perl->status, make_number (0)))
-    {
-      perl->phase = Qbad;
-      /* FIXME: Leaks?  */
-      perl_free (perl->interp);
-      current_perl = 0;
-      this_perl = perl_interpreter = Qnil;
-    }
-  else
-    perl->phase = Qparsed;
-  UNGCPRO;
-
+  perl->phase = Qparsed;
   CACHE_ELO_STASH (perl);
+
+  UNGCPRO;
   return unbind_to (count, this_perl);
 }
 
@@ -1003,24 +855,27 @@ perl's exit status.")
   (interpreter)
      Lisp_Object interpreter;
 {
-  struct perl_interpreter_object *perl;
+  struct emacs_perl_interpreter *perl;
   struct perl_frame pf;
   int count = specpdl_ptr - specpdl;
   struct gcpro gcpro1;
 
   if (NILP (interpreter))
-    interpreter = perl_interpreter;
+    interpreter = Vperl_interpreter;
 
-  CHECK_PERL (interpreter);
+  CHECK_PERL_INTERPRETER (interpreter);
   perl = XPERL_INTERPRETER (interpreter);
-  if (perl->top.l->prev
-      || ! (EQ (perl->phase, Qparsed)
-	    || EQ (perl->phase, Qran)))
-    error ("Bad calling sequence for `perl-run'");
+  if (perl->frame_l->prev)
+    error ("perl-run: interpreter is already running");
+
+  if (! (EQ (perl->phase, Qparsed) || EQ (perl->phase, Qran)))
+    Fsignal (Qerror,
+	     Fcons (build_string ("Bad calling sequence for `perl-run'"),
+		    Fcons (perl->phase, Qnil)));
 
   perl->phase = Qrunning;
   current_perl = perl;
-  perl_interpreter = interpreter;
+  Vperl_interpreter = interpreter;
   push_perl_frame (&pf, 0);
 
   GCPRO1 (interpreter);
@@ -1037,56 +892,54 @@ If no arg is given, shut down the current Perl interpreter.")
   (interpreter)
      Lisp_Object interpreter;
 {
-  struct perl_interpreter_object *perl;
+  struct emacs_perl_interpreter *perl;
   struct perl_frame pf;
   int count = specpdl_ptr - specpdl;
   struct gcpro gcpro1;
+  struct sv_lisp *prot, *tmp;
 
   if (NILP (interpreter))
     {
-      interpreter = perl_interpreter;
+      interpreter = Vperl_interpreter;
       if (NILP (interpreter))
 	return Qnil;
     }
 
-  CHECK_PERL (interpreter);
+  CHECK_PERL_INTERPRETER (interpreter);
   perl = XPERL_INTERPRETER (interpreter);
-  if (perl == top_level_perl)
+  if (PERL_IS_TOP_LEVEL (perl))
     error ("Attempt to destruct a top-level Perl");
 
-  /* perl->top.l == 0 only during global destruction.  */
-  if ((perl->top.l && perl->top.l->prev)
-      || (! EQ (perl->phase, Qparsed)
-	  && ! EQ (perl->phase, Qran)))
-    error ("Bad calling sequence for `perl-destruct'");
+  /* perl->frame_l == 0 only during global destruction.  */
+  if (perl->frame_l && perl->frame_l->prev)
+    error ("Attempt to kill Perl from within Perl; use `M-x top-level RET'"
+	   " first");
+
+  if (!(EQ (perl->phase, Qparsed) || EQ (perl->phase, Qran)))
+    Fsignal (Qerror,
+	     Fcons (build_string ("Bad calling sequence for `perl-destruct'"),
+		    Fcons (perl->phase, Qnil)));
 
   perl->phase = Qdestructing;
   current_perl = perl;
-  perl_interpreter = interpreter;
+  Vperl_interpreter = interpreter;
   push_perl_frame (&pf, 0);
 
   GCPRO1 (interpreter);
   perl_destruct (perl->interp);
   UNGCPRO;
 
-  if (perl->protlist)
+  for (prot = perl->protlist; prot; prot = tmp)
     {
-      long count;
-      SV *sv, *tmp;
-      struct sv_lisp *prot;
-
-      for (count = 0, sv = perl->protlist; sv; count++, sv = tmp)
-	{
-	  tmp = SV_LISP_NEXT (sv);
-	  xfree ((Lisp_Object *) SvIVX (sv));
-	}
-      if (PL_perl_destruct_level >= 2)
-	Perl_warn ("In perl-destruct: %ld unfreed Lisp objects!\n", count);
+      tmp = prot->next;
+      xfree (prot);
     }
+
   perl->phase = Qdestructed;
   current_perl = 0;
-  perl_interpreter = Qnil;
-  /* gcpro the interpreter while unbinding.  */
+  Vperl_interpreter = Qnil;
+
+  /* gcpro the interpreter while unbinding.  */  /* FIXME: Why?  */
   unbind_to (count, interpreter);
   return Qnil;
 }
@@ -1097,9 +950,9 @@ DEFUN ("perl-status", Fperl_status, Sperl_status, 0, 1, 0,
      Lisp_Object interpreter;
 {
   if (NILP (interpreter))
-    interpreter = perl_interpreter;
+    interpreter = Vperl_interpreter;
 
-  CHECK_PERL (interpreter);
+  CHECK_PERL_INTERPRETER (interpreter);
   return XPERL_INTERPRETER (interpreter)->status;
 }
 
@@ -1110,9 +963,9 @@ parsing, parsed, running, ran, destructing, destructed, bad.")
      Lisp_Object interpreter;
 {
   if (NILP (interpreter))
-    interpreter = perl_interpreter;
+    interpreter = Vperl_interpreter;
 
-  CHECK_PERL (interpreter);
+  CHECK_PERL_INTERPRETER (interpreter);
   return XPERL_INTERPRETER (interpreter)->phase;
 }
 
@@ -1122,10 +975,16 @@ parsing, parsed, running, ran, destructing, destructed, bad.")
 static void
 init_perl ()
 {
-  if (NILP (Ffboundp (Qmake_perl_interpreter)))
-    Fset_perl_interpreter (Fprimitive_make_perl (0, 0));
+  Lisp_Object qmpi;
+
+  qmpi = intern ("make-perl-interpreter");
+  if (NILP (Ffboundp (qmpi)))
+    Vperl_interpreter = Fprimitive_make_perl (0, 0);
   else
-    Fset_perl_interpreter (call0 (Qmake_perl_interpreter));
+    Vperl_interpreter = call0 (qmpi);
+
+  if (NILP (Vperl_interpreter))
+    error ("Perl initialization failed");
 }
 
 /* There should be no need to check argument type in the Lisp_Foreign_Object
@@ -1135,38 +994,7 @@ static Lisp_Object
 lisp_sv_type_of (object)
      Lisp_Object object;
 {
-  char *str;
-  SV *sv = (SV *) XFOREIGN_OBJECT (object)->data;
-
-  /* Look to sv.c:sv_reftype for inspiration.  */
-
-  if (SvOBJECT(sv))
-    /* FIXME: Let's return something more interesting,
-       like the object's stash.  */
-    return intern ("perl-object");
-
-  switch (SvTYPE (sv))
-    {
-    case SVt_NULL:
-    case SVt_IV:
-    case SVt_NV:
-    case SVt_RV:
-    case SVt_PV:
-    case SVt_PVIV:
-    case SVt_PVNV:
-    case SVt_PVMG:
-    case SVt_PVBM:	str = SvROK (sv) ? "perl-ref" : "perl-scalar"; break;
-    case SVt_PVLV:	str = "perl-lvalue";	break;
-    case SVt_PVAV:	str = "perl-array";	break;
-    case SVt_PVHV:	str = "perl-hash";	break;
-    case SVt_PVCV:	str = "perl-code";	break;
-    case SVt_PVGV:	str = "perl-glob";	break;
-    case SVt_PVFM:	str = "perl-format";	break;
-    case SVt_PVIO:	str = "perl-io";	break;
-    default:		str = "perl-unknown";	break;
-    }
-
-  return intern (str);
+  return Qperl_value;
 }
 
 static void
@@ -1177,16 +1005,16 @@ lisp_sv_mark (object)
   mark_object (&XFOREIGN_OBJECT (object)->lisp_data);
 }
 
+/* Called from Fgarbage_collect.  */
 static void
 lisp_sv_destroy (object)
      Lisp_Object object;
 {
-  struct perl_interpreter_object *perl;
+  struct emacs_perl_interpreter *perl;
   SV *sv;
 
   /* Check the interpreter's status to avoid a crash after `perl-destruct'.
-     During Emacs destruction, even this is dangerous, so the only thing
-     allowed is to free memory.
+     During Emacs destruction, even this is dangerous.
      (The solution is to call `perl-destruct' *before* Emacs starts to
      destruct.)  */
   if (EQ (emacs_phase, Qdestructing))
@@ -1199,7 +1027,7 @@ lisp_sv_destroy (object)
 
   sv = (SV *) XFOREIGN_OBJECT (object)->data;
 
-  if (! perl->top.p || SvREFCNT (sv) || ! SvOBJECT (sv))
+  if (SvREFCNT (sv) > 1 || ! perl->frame_p || ! SvROK (sv))
     {
       SvREFCNT_dec (sv);
       return;
@@ -1207,18 +1035,8 @@ lisp_sv_destroy (object)
   call_perl (SV_FREE, sv);
 }
 
-static struct Lisp_Foreign_Object_VTable generic_vtbl =
-  {
-    lisp_sv_type_of,	/* TYPE-OF method.  */
-    lisp_sv_destroy,	/* Destructor.  */
-    lisp_sv_mark,	/* MARK method.  Mark the interpreter.  */
-    0,			/* TO-STRING method.  FIXME: Write one!  */
-    0,			/* EQUAL method.  FIXME: Write one!  */
-    0			/* CALL method.  Invalid as a function.  */
-  };
-
 static Lisp_Object
-lisp_cv_call (self, nargs, args)
+lisp_sv_call (self, nargs, args)
      Lisp_Object self;
      int nargs;
      Lisp_Object *args;
@@ -1229,6 +1047,7 @@ lisp_cv_call (self, nargs, args)
   if (PERL_DEFUNCT_P (LISP_SV_INTERP (self)))
     error ("Attempt to call Perl code in a destructed interpreter");
 
+  /* XXX SET_PERL(XFOREIGN_OBJECT (self)->lisp_data) */
   new_args = (Lisp_Object *) alloca ((nargs + 2) * sizeof (Lisp_Object));
   new_args [0] = self;
   if (EQ (args [0], Qscalar_context)
@@ -1246,92 +1065,93 @@ lisp_cv_call (self, nargs, args)
     }
 }
 
-static struct Lisp_Foreign_Object_VTable code_vtbl =
+static struct Lisp_Foreign_Object_VTable sv_vtbl =
   {
     lisp_sv_type_of,	/* TYPE-OF method.  */
-    lisp_sv_destroy,	/* Destructor.  Use SV's.  */
+    lisp_sv_destroy,	/* Destructor.  */
     lisp_sv_mark,	/* MARK method.  Mark the interpreter.  */
-    0,			/* TO-STRING method.  Use default.  */
-    0,			/* EQUAL method.  Use default.  */
-    lisp_cv_call	/* CALL method.  */
+    0,			/* TO-STRING method.  FIXME: Write one!  */
+    0,			/* EQUAL method.  FIXME: Write one!  */
+    lisp_sv_call	/* CALL method.  */
   };
 
+/* Stick a Perl thing in a Lisp object.  */
 Lisp_Object
-perlmacs_lisp_wrap_sv (sv)
+perlmacs_sv_as_lisp_noinc (sv)
      SV *sv;
 {
-  if (SvROK (sv))
-    sv = SvRV (sv);
-
-  SvREFCNT_inc (sv);
-  return new_foreign_object (SvTYPE (sv) == SVt_PVCV
-			     ? &code_vtbl : &generic_vtbl,
-			     sv, perl_interpreter);
+  return new_foreign_object (&sv_vtbl, sv, Vperl_interpreter);
 }
 
+/* Like perlmacs_sv_as_lisp_noinc, but the caller is not assumed
+   to own a reference to sv.  */
+Lisp_Object
+perlmacs_sv_as_lisp (sv)
+     SV *sv;
+{
+  SvREFCNT_inc (sv);
+  return perlmacs_sv_as_lisp_noinc (sv);
+}
+
+/* Convert a Perl return value or Lisp function argument into a Lisp object.
+   This is the default, deep-copying, user-friendly conversion.  */
 Lisp_Object
 perlmacs_sv_to_lisp (sv)
      SV *sv;
 {
   Lisp_Object retval;
-  SV *sv1, *sv2;
+  STRLEN len;
+  char *pc;
 
   if (! sv)
     return Qnil;  /* grrr.... */
 
-  if (! SvOK (sv))  /* undef equals nil */
-    return Qnil;
-  if (SvIOK (sv) && (IV) XINT (SvIV (sv)) == SvIV (sv))
-    return make_number (SvIV (sv));
-
-#ifdef LISP_FLOAT_TYPE
-  if (SvNIOK (sv))
-    return make_float (SvNV (sv));
-#endif
-
-  if (SvPOK (sv))
+  if (SvGMAGICAL (sv))
     {
-      STRLEN len;
-      char *pc = SvPV (sv, len);
-      return make_unibyte_string (pc, (int) len);
+      if (current_perl->frame_l)
+	call_perl (PERL_MG_GET, sv);
+      else
+	Perl_mg_get (sv);
     }
 
-  /* Don't distinguish, e.g., AV* from RV->AV*.  Perl can't pass us an AV*,
-     but this way, C can avoid allocating RV's.  */
-  sv1 = SvROK (sv) ? SvRV (sv) : sv;
+  if (! SvOK (sv))  /* undef equals nil */
+    return Qnil;
 
-  if (BARE_SV_LISPP (sv1))
-    return XBARE_SV_LISP (sv1);
-
-  switch (SvTYPE (sv1))
+  if (SvROK (sv))
     {
-    case SVt_NULL:
-    case SVt_IV:
-    case SVt_NV:
-    case SVt_RV:
-    case SVt_PV:
-    case SVt_PVIV:
-    case SVt_PVNV:
-    case SVt_PVMG:
-    case SVt_PVBM:
-    case SVt_PVLV:
-    case SVt_PVHV:
-    case SVt_PVCV:
-    case SVt_PVFM:
-    case SVt_PVIO:
-      if (SvROK (sv1))
+      sv = SvRV (sv);
+
+      if (BARE_SV_LISPP (sv))
+	return XBARE_SV_LISP (sv);
+
+      switch (SvTYPE (sv))
 	{
-	  sv2 = SvRV (sv1);
+	case SVt_NULL:
+	case SVt_IV:
+	case SVt_NV:
+	case SVt_RV:
+	case SVt_PV:
+	case SVt_PVIV:
+	case SVt_PVNV:
+	case SVt_PVMG:
+	  /* I don't know what SVt_PVBM is.  A studied thing?  Boyer-Moore?
+	     Anyway, sv.c:sv_reftype groups it with the above types,
+	     and who am I to differ?  */
+	case SVt_PVBM:
 
 	  /* Convert array ref ref to vector.  */
-	  if (SvTYPE (sv2) == SVt_PVAV)
+	  /* FIXME: Factor this, code, the list constructor for arrayrefs,
+	     and the list-context perlmacs_retval code into one or two
+	     functions.  */
+	  if (SvROK (sv) && SvTYPE (SvRV (sv)) == SVt_PVAV)
 	    {
+	      AV *av = (AV *) SvRV (sv);
 	      SV **ary;
 	      I32 key;
 	      Lisp_Object *ptr;
 
-	      ary = AvARRAY ((AV *) sv2);
-	      key = AvFILLp ((AV *) sv2) + 1;
+	      ary = AvARRAY (av);
+	      key = AvFILLp (av) + 1;
 	      retval = Fmake_vector (make_number (key), Qnil);
 	      ptr = XVECTOR (retval)->contents;
 	      while (key--)
@@ -1339,70 +1159,93 @@ perlmacs_sv_to_lisp (sv)
 
 	      return retval;
 	    }
+	  break;
+
+	  /* FIXME: The following conversions probably ignore magicalness.
+	     To change this, we would have to take note of what frame
+	     we are called in.  If Lisp, we would have to push a Perl
+	     frame for mg_get().  And we would have to gc-protect retval.  */
+
+	case SVt_PVAV:
+	  /* Convert arrayref to list.  */
+	  {
+	    SV **ary;
+	    I32 key;
+
+	    ary = AvARRAY ((AV *) sv);
+	    key = AvFILLp ((AV *) sv) + 1;
+	    retval = Qnil;
+	    while (key)
+	      retval = Fcons (perlmacs_sv_to_lisp (ary [--key]), retval);
+	  }
+	  return retval;
+
+	case SVt_PVGV:
+	  {
+	    dTHR;
+	    /* Check for glob in package main.  */
+	    if (GvSTASH (sv) != PL_defstash)
+	      break;
+	    {
+	      /* Convert globref to symbol.  */
+	      char *pc;
+	      const char *pcc;
+	      const char *end;
+	      char *name;
+
+	      end = GvNAME (sv) + GvNAMELEN (sv);
+	      name = alloca (1 + GvNAMELEN (sv));
+	      for (pcc = GvNAME (sv), pc = name; pcc != end; ++pcc, ++pc)
+		*pc = (*pcc == '_') ? '-' : (*pcc == '-') ? '_' : *pcc;
+	      *pc = '\0';
+
+	      return intern (name);
+	    }
+	  }
+	  break;
+
+	default:
+	  break;
 	}
-      break;
 
-    case SVt_PVAV:
-      /* Convert arrayref to list.  */
-      {
-	SV **ary;
-	I32 key;
-
-	ary = AvARRAY((AV *) sv1);
-	key = AvFILLp((AV *) sv1) + 1;
-	retval = Qnil;
-	while (key)
-	  retval = Fcons (perlmacs_sv_to_lisp (ary [--key]), retval);
-
-	return retval;
-      }
-      break;
-
-    case SVt_PVGV:
-      /* Check for glob in package main.  */
-      if (GvSTASH (sv1) == PL_defstash)
-	{
-	  /* Convert globref to symbol.  */
-	  char *pc;
-	  const char *pcc;
-	  const char *end;
-	  char *name;
-
-	  end = GvNAME (sv1) + GvNAMELEN (sv1);
-	  name = alloca (1 + GvNAMELEN (sv1));
-	  for (pcc = GvNAME (sv1), pc = name; pcc != end; ++pcc, ++pc)
-	    *pc = (*pcc == '_') ? '-' : (*pcc == '-') ? '_' : *pcc;
-	  *pc = '\0';
-
-	  return intern (name);
-	}
-      break;
+      return perlmacs_sv_as_lisp (sv);
     }
 
-  return perlmacs_lisp_wrap_sv (sv);
+  if (SvIOK (sv) && (IV) XINT (SvIVX (sv)) == SvIVX (sv))
+    return make_number (SvIVX (sv));
+
+#ifdef LISP_FLOAT_TYPE
+  if (SvNIOK (sv))
+    return make_float (SvNVX (sv));
+#endif
+
+  pc = SvPV (sv, len);
+  return make_unibyte_string (pc, (int) len);
 }
 
+/* Stick a Lisp object into a Perl reference of type Emacs::Lisp::Object.  */
 SV *
-perlmacs_sv_wrap_lisp (obj)
+perlmacs_lisp_as_sv (obj)
      Lisp_Object obj;
 {
+  dTHR;
   struct sv_lisp *prot;
   SV *sv;
-  SV *rv;
 
   /* Protect object from garbage collection during the SV lifetime.  */
   prot = (struct sv_lisp *) xmalloc (sizeof (struct sv_lisp));
   prot->obj = obj;
   prot->prev = 0;
   prot->next = current_perl->protlist;
-  sv = Perl_newSViv ((IV) prot);
-  if (current_perl->protlist)
-    SV_LISP_PREV (current_perl->protlist) = sv;
-  current_perl->protlist = sv;
+  sv = Perl_sv_bless (Perl_newRV_noinc (Perl_newSViv ((IV) prot)),
+		      current_perl->elo_stash);
+  prot->sv = sv;
 
-  /* FIXME: I doubt whether I'm adequately freeing these rv's.  */
-  rv = Perl_sv_bless (Perl_newRV_noinc (sv), current_perl->elo_stash);
-  return rv;
+  if (current_perl->protlist)
+    current_perl->protlist->prev = prot;
+  current_perl->protlist = prot;
+
+  return sv;
 }
 
 SV *
@@ -1414,7 +1257,7 @@ perlmacs_lisp_to_sv (obj)
 
   /* Unconvert wrapped Perl data.  */
   if (PERL_OBJECT_P (obj))
-    return Perl_newRV (XLISP_SV (obj));
+    return SvREFCNT_inc (XLISP_SV (obj));
 
   switch (XTYPE (obj))
     {
@@ -1487,11 +1330,11 @@ perlmacs_lisp_to_sv (obj)
     default:
       break;
     }
-  return perlmacs_sv_wrap_lisp (obj);
+  return perlmacs_lisp_as_sv (obj);
 }
 
-DEFUN ("perl-object-p", Fperl_object_p, Sperl_object_p, 1, 1, 0,
-  "Return t if OBJECT is any type of Perl data or code.")
+DEFUN ("perl-value-p", Fperl_value_p, Sperl_value_p, 1, 1, 0,
+  "Return t if OBJECT is a Perl scalar value.")
      (object)
      Lisp_Object object;
 {
@@ -1501,41 +1344,97 @@ DEFUN ("perl-object-p", Fperl_object_p, Sperl_object_p, 1, 1, 0,
 }
 
 DEFUN ("perl-to-lisp", Fperl_to_lisp, Sperl_to_lisp, 1, 1, 0,
-  "Return OBJECT as the corresponding Lisp type.\n\
-If the object is not Perl data or cannot be converted to Lisp,\n\
-it is returned unchanged.")
+  "Return a deep copy of OBJECT replacing Perl structures with Lisp equivalents.\n\
+Arrayrefs are converted to a lists.  References to arrayrefs become vectors.\n\
+\n\
+If the object is not Perl data or cannot be converted to Lisp (for example,\n\
+a hash reference), it is returned unchanged.")
      (object)
      Lisp_Object object;
 {
   if (LISP_SVP (object))
-    return perlmacs_sv_to_lisp (XLISP_SV (object));
+    {
+      if (PERL_DEFUNCT_P (LISP_SV_INTERP (object)))
+	return Qnil;
+      return perlmacs_sv_to_lisp (XLISP_SV (object));
+    }
   return object;
 }
 
 DEFUN ("perl-wrap", Fperl_wrap, Sperl_wrap, 1, 1, 0,
-  "Return OBJECT as a blessed reference of Perl package Emacs::Lisp::Object.")
+  "Return OBJECT as a Perl object of class Emacs::Lisp::Object.")
      (object)
      Lisp_Object object;
 {
-  return perlmacs_lisp_wrap_sv (perlmacs_sv_wrap_lisp (object));
+  INIT_PERL;
+  return perlmacs_sv_as_lisp_noinc (perlmacs_lisp_as_sv (object));
 }
 
-DEFUN ("make-perl-data", Fmake_perl_data, Smake_perl_data, 1, 1, 0,
-  "Return OBJECT as the corresponding Perl type.\n\
-If the object is not Perl data or cannot be converted to Perl,\n\
-return OBJECT as a blessed reference of package Emacs::Lisp::Object.")
+DEFUN ("lisp-to-perl", Flisp_to_perl, Slisp_to_perl, 1, 1, 0,
+  "Return a deep copy of OBJECT replacing Lisp structures with Perl equivalents.\n\
+If the object is not Perl data and cannot be converted to Perl (for example,\n\
+a frame object), return it as an object of class Emacs::Lisp::Object.")
      (object)
      Lisp_Object object;
 {
-  return perlmacs_lisp_wrap_sv (perlmacs_lisp_to_sv (object));
+  INIT_PERL;
+  return perlmacs_sv_as_lisp_noinc (perlmacs_lisp_to_sv (object));
 }
 
+static Lisp_Object
+internal_perl_eval (string, context, conv)
+     Lisp_Object string, context;
+     sv_to_lisp_converter_t conv;
+{
+  SV *sv;
+  I32 ctx;
+  struct perl_frame pf;
+
+  CHECK_STRING (string, 0);
+  INIT_PERL;
+
+  if (EQ (context, Qnil) || EQ (context, Qscalar_context))
+    ctx = G_SCALAR;
+  else if (EQ (context, Qlist_context))
+    ctx = G_ARRAY;
+  else if (EQ (context, Qvoid_context))
+    ctx = G_VOID;
+  else
+    Fsignal (Qerror,
+	     Fcons (build_string ("Unknown context for Perl evaluation"),
+		    Fcons (context, Qnil)));
+
+  push_perl_frame (&pf, 1);
+  sv = Perl_sv_2mortal (perlmacs_lisp_to_sv (string));
+  return call_perl (PERL_EVAL_SV, sv, ctx, conv);
+}
+
+DEFUN ("perl-eval", Fperl_eval, Sperl_eval, 1, 2, 0,
+  "Evaluate STRING as Perl code, returning the value of the last expression.\n\
+If specified, CONTEXT must be either `scalar-context', `list-context', or\n\
+`void-context'.  By default, a scalar context is supplied.")
+     (string, context)
+     Lisp_Object string, context;
+{
+  return internal_perl_eval (string, context, perlmacs_sv_to_lisp);
+}
+
+DEFUN ("perl-eval-raw", Fperl_eval_raw, Sperl_eval_raw, 1, 2, 0,
+  "Evaluate STRING as Perl code, returning its value as Perl data.\n\
+This function is exactly the same as `perl-eval' except in that it does not\n\
+convert its result to Lisp.")
+     (string, context)
+     Lisp_Object string, context;
+{
+  return internal_perl_eval (string, context, perlmacs_sv_as_lisp);
+}
+
 static Lisp_Object
 internal_perl_call (nargs, args, do_eval, conv)
      int nargs;
      Lisp_Object *args;
      int do_eval;
-     Lisp_Object (*conv) P_ ((SV *sv));
+     sv_to_lisp_converter_t conv;
 {
   SV *sv;
   Lisp_Object code;
@@ -1560,62 +1459,14 @@ internal_perl_call (nargs, args, do_eval, conv)
     EXTEND (sp, nargs - 1);
     PUSHMARK (sp);
     for (i = 1; i < nargs; i++)
-      *++sp = sv_2mortal (perlmacs_lisp_to_sv (args [i]));
+      *++sp = Perl_sv_2mortal (perlmacs_lisp_to_sv (args [i]));
     PUTBACK;
   }
   if (do_eval)
     return call_perl (EVAL_AND_CALL, XSTRING (code)->data, ctx);
   else
-    return call_perl (PERL_CALL_SV, sv_2mortal (perlmacs_lisp_to_sv (code)),
-		      ctx, conv);
-}
-
-static Lisp_Object
-internal_perl_eval (string, context, conv)
-     Lisp_Object string, context;
-     Lisp_Object (*conv) P_ ((SV *sv));
-{
-  SV *sv;
-  I32 ctx;
-  struct perl_frame pf;
-
-  CHECK_STRING (string, 0);
-  INIT_PERL;
-
-  if (EQ (context, Qnil) || EQ (context, Qscalar_context))
-    ctx = G_SCALAR;
-  else if (EQ (context, Qlist_context))
-    ctx = G_ARRAY;
-  else if (EQ (context, Qvoid_context))
-    ctx = G_VOID;
-  else
-    Fsignal (Qerror,
-	     Fcons (build_string ("Unknown context for Perl evaluation"),
-		    Fcons (context, Qnil)));
-
-  push_perl_frame (&pf, 1);
-  sv = sv_2mortal (perlmacs_lisp_to_sv (string));
-  return call_perl (PERL_EVAL_SV, sv, ctx, conv);
-}
-
-DEFUN ("perl-eval", Fperl_eval, Sperl_eval, 1, 2, 0,
-  "Evaluate STRING as Perl code, returning the value of the last expression.\n\
-If specified, CONTEXT must be either `scalar-context', `list-context', or\n\
-`void-context'.  By default, a scalar context is supplied.")
-     (string, context)
-     Lisp_Object string, context;
-{
-  return internal_perl_eval (string, context, perlmacs_sv_to_lisp);
-}
-
-DEFUN ("perl-eval-raw", Fperl_eval_raw, Sperl_eval_raw, 1, 2, 0,
-  "Evaluate STRING as Perl code, returning its value as Perl data.\n\
-This function is exactly the same as `perl-eval' except in that it does not\n\
-convert its result to Lisp.")
-     (string, context)
-     Lisp_Object string, context;
-{
-  return internal_perl_eval (string, context, perlmacs_lisp_wrap_sv);
+    return call_perl (PERL_CALL_SV,
+		      Perl_sv_2mortal (perlmacs_lisp_to_sv (code)), ctx, conv);
 }
 
 DEFUN ("perl-call", Fperl_call, Sperl_call, 1, MANY, 0,
@@ -1653,7 +1504,7 @@ convert its result to Lisp.\n\
      Lisp_Object *args;
 {
   INIT_PERL;
-  return internal_perl_call (nargs, args, 0, perlmacs_lisp_wrap_sv);
+  return internal_perl_call (nargs, args, 0, perlmacs_sv_as_lisp);
 }
 
 DEFUN ("perl-eval-and-call", Fperl_eval_and_call, Sperl_eval_and_call,
@@ -1670,17 +1521,14 @@ sub name or coderef.  The remaining arguments are treated the same as in\n\
      int nargs;
      Lisp_Object *args;
 {
-  INIT_PERL;
   CHECK_STRING (args [0], 0);
+  INIT_PERL;
   return internal_perl_call (nargs, args, 1, 0);
 }
 
 void
 syms_of_perlmacs ()
 {
-  Qmake_perl_interpreter = intern ("make-perl-interpreter");
-  staticpro (&Qmake_perl_interpreter);
-
   Qparsing = intern ("parsing");
   staticpro (&Qparsing);
   Qparsed = intern ("parsed");
@@ -1689,8 +1537,6 @@ syms_of_perlmacs ()
   staticpro (&Qran);
   Qdestructed = intern ("destructed");
   staticpro (&Qdestructed);
-  Qbad = intern ("bad");
-  staticpro (&Qbad);
 
   Qvoid_context = intern ("void-context");
   staticpro (&Qvoid_context);
@@ -1699,12 +1545,17 @@ syms_of_perlmacs ()
   Qlist_context = intern ("list-context");
   staticpro (&Qlist_context);
 
+  Qperl_value = intern ("perl-value");
+  staticpro (&Qperl_value);
+
+  DEFVAR_LISP ("perl-interpreter", &Vperl_interpreter,
+    "The current active Perl interpreter, or `nil' if none is active.");
+
   Qperl_interpreter = intern ("perl-interpreter");
   staticpro (&Qperl_interpreter);
 
   if (! top_level_perl)
-    perl_interpreter = Qnil;
-  staticpro (&perl_interpreter);
+    Vperl_interpreter = Qnil;
 
   Qperl_error = intern ("perl-error");
   staticpro (&Qperl_error);
@@ -1716,17 +1567,15 @@ syms_of_perlmacs ()
 
   Fprovide (intern ("perl-core"));
 
-  defsubr (&Sget_perl_interpreter);
-  defsubr (&Sset_perl_interpreter);
   defsubr (&Sprimitive_make_perl);
   defsubr (&Sperl_run);
   defsubr (&Sperl_destruct);
   defsubr (&Sperl_status);
   defsubr (&Sperl_phase);
-  defsubr (&Sperl_object_p);
+  defsubr (&Sperl_value_p);
   defsubr (&Sperl_to_lisp);
   defsubr (&Sperl_wrap);
-  defsubr (&Smake_perl_data);
+  defsubr (&Slisp_to_perl);
   defsubr (&Sperl_eval);
   defsubr (&Sperl_eval_raw);
   defsubr (&Sperl_call);

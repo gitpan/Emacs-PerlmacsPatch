@@ -32,7 +32,7 @@ for my $i (0 .. $#ARGV) {
   next unless $ARGV[$i] eq '--';
   @configure_opts = splice @ARGV, $i;
   shift @configure_opts;
-  
+
   for (@configure_opts) {
     s|\$|\$\$|g;
     if (s|'|'\\''|g) { $_ = "'$_'" }
@@ -50,7 +50,7 @@ prep_emacs_src ();
 WriteMakefile (
 	       VERSION => $perlmacs_ver,
 	       NAME => 'Emacs::PerlmacsPatch',
-	       dist => { DIST_DEFAULT => 'emacs-perlmacs.diff tardist' }
+	       dist => { DIST_DEFAULT => 'emacs-perlmacs.diff tardist' },
 	       );
 
 # Makefile must depend on version.el, but MakeMaker makes no provision
@@ -87,10 +87,14 @@ END
 }
 
 sub MY::test {
-  return <<END;
+    # Something's wrong with the exit stati returned to Test::Harness.
+    return <<END;
 
-test testdb :
-	\@echo 'No tests defined for \$(NAME) extension.'
+test : all
+	cd $emacs_src/build/perl && HARNESS_IGNORE_EXITCODE=1 make test
+
+testdb : all
+	cd $emacs_src/build/perl && HARNESS_IGNORE_EXITCODE=1 make testdb
 END
 }
 
@@ -305,6 +309,11 @@ DEAD
     print PATCH while read DIFF, $_, 4096;
     close PATCH;
     $? and die "\n`$cmd' returned status $?\n$aborted";
+
+    for my $dir ('perl', 'perl/lib', 'perl/lib/Emacs', 'perl/t', 'src/xs') {
+	print "mkdir $emacs_src/$dir\n";
+	mkdir "$emacs_src/$dir", 0777;
+    }
 
     my @files;
     find sub { push @files, $File::Find::name if -f }, "perlmacs";

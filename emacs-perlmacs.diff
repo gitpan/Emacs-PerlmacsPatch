@@ -1,6 +1,7 @@
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/Makefile.in perlmacs-0.13/Makefile.in
+Only in perlmacs-0.14: .cvsignore
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/Makefile.in perlmacs-0.14/Makefile.in
 *** emacs-20.3/Makefile.in	Sat Aug  1 20:21:22 1998
---- perlmacs-0.13/Makefile.in	Fri Mar 19 21:21:20 1999
+--- perlmacs-0.14/Makefile.in	Fri Mar 31 01:52:34 2000
 ***************
 *** 1,3 ****
 --- 1,7 ----
@@ -12,8 +13,18 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   # DIST: make most of the changes to this file you might want, so try
   # DIST: that first.
 ***************
+*** 49,54 ****
+--- 53,59 ----
+  C_SWITCH_X_SITE=@C_SWITCH_X_SITE@
+  LD_SWITCH_X_SITE=@LD_SWITCH_X_SITE@
+  YACC=@YACC@
++ PERL=@PERL@
+  
+  ### These help us choose version- and architecture-specific directories
+  ### to install files in.
+***************
 *** 56,61 ****
---- 60,66 ----
+--- 61,67 ----
   ### This should be the number of the Emacs version we're building,
   ### like `18.59' or `19.0'.
   version=@version@
@@ -23,7 +34,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ### for, like `mips-dec-ultrix' or `sparc-sun-sunos'.
 ***************
 *** 170,175 ****
---- 175,186 ----
+--- 176,187 ----
   # Where to put the docstring file.
   docdir=@docdir@
   
@@ -37,7 +48,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   # Allow the user to specify the install program.
 ***************
-*** 183,189 ****
+*** 183,197 ****
   # ============================= Targets ==============================
   
   # What emacs should be called when installed.
@@ -45,7 +56,15 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   # Subdirectories to make recursively.  `lisp' is not included
   # because the compiled lisp files are part of the distribution
---- 194,201 ----
+  # and you cannot remake them without installing Emacs first.
+! SUBDIR = lib-src src leim
+  
+  # The makefiles of the directories in $SUBDIR.
+! SUBDIR_MAKEFILES = lib-src/Makefile man/Makefile src/Makefile oldXMenu/Makefile lwlib/Makefile leim/Makefile
+  
+  # Subdirectories to install, and where they'll go.
+  # lib-src's makefile knows how to install it, so we don't do that here.
+--- 195,210 ----
   # ============================= Targets ==============================
   
   # What emacs should be called when installed.
@@ -54,6 +73,14 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   # Subdirectories to make recursively.  `lisp' is not included
   # because the compiled lisp files are part of the distribution
+  # and you cannot remake them without installing Emacs first.
+! SUBDIR = lib-src src leim @maybe_perl@
+  
+  # The makefiles of the directories in $SUBDIR.
+! SUBDIR_MAKEFILES = lib-src/Makefile man/Makefile src/Makefile oldXMenu/Makefile lwlib/Makefile leim/Makefile perl/Makefile
+  
+  # Subdirectories to install, and where they'll go.
+  # lib-src's makefile knows how to install it, so we don't do that here.
 ***************
 *** 199,206 ****
   # When installing the info files, we need to do special things to
@@ -64,7 +91,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   all: ${SUBDIR}
   
---- 211,218 ----
+--- 212,219 ----
   # When installing the info files, we need to do special things to
   # avoid nuking an existing dir file, so we don't do that here;
   # instead, we have written out explicit code in the `install' targets.
@@ -74,15 +101,18 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   all: ${SUBDIR}
   
 ***************
-*** 219,225 ****
+*** 219,228 ****
   	  -e 's;\(#.*PATH_DATA\).*$$;\1 "${etcdir}";'			\
   	  -e 's;\(#.*PATH_BITMAPS\).*$$;\1 "${bitmapdir}";'		\
   	  -e 's;\(#.*PATH_X_DEFAULTS\).*$$;\1 "${x_default_search_path}";' \
 ! 	  -e 's;\(#.*PATH_DOC\).*$$;\1 "${docdir}";') &&		\
   	${srcdir}/move-if-change paths.h.$$$$ src/paths.h
   
-  # For parallel make, src should be build before leim.
---- 231,239 ----
+! # For parallel make, src should be build before leim.
+  leim:   src
+  
+  src:	lib-src FRC
+--- 232,243 ----
   	  -e 's;\(#.*PATH_DATA\).*$$;\1 "${etcdir}";'			\
   	  -e 's;\(#.*PATH_BITMAPS\).*$$;\1 "${bitmapdir}";'		\
   	  -e 's;\(#.*PATH_X_DEFAULTS\).*$$;\1 "${x_default_search_path}";' \
@@ -91,7 +121,39 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
 ! 	  -e 's;\(#.*PATH_INCLUDEDIR\).*$$;\1 "${includedir}";') &&	\
   	${srcdir}/move-if-change paths.h.$$$$ src/paths.h
   
-  # For parallel make, src should be build before leim.
+! # For parallel make, src should be built before leim.
+  leim:   src
+  
+  src:	lib-src FRC
+***************
+*** 236,241 ****
+--- 251,264 ----
+  	  CC='${CC}' CFLAGS='${CFLAGS}' CPPFLAGS='${CPPFLAGS}' \
+  	  LDFLAGS='${LDFLAGS}' MAKE='${MAKE}'
+  
++ perl/Makefile: src perl/Makefile.PL
++ 	test x@maybe_perl@ = xperl || exit 0; cd perl; \
++ 		../src/perlmacs Makefile.PL
++ 	-touch $@
++ 
++ test: perl
++ 	cd perl; $(MAKE) test
++ 
+  blessmail: ${SUBDIR_MAKEFILES} src FRC
+  	cd lib-src; $(MAKE) maybe-blessmail $(MFLAGS) \
+  	  MAKE='${MAKE}' archlibdir='$(archlibdir)'
+***************
+*** 265,270 ****
+--- 288,296 ----
+  leim/Makefile: $(srcdir)/leim/Makefile.in config.status
+  	./config.status
+  
++ perl/Makefile.PL: $(srcdir)/perl/Makefile.PL.in config.status
++ 	./config.status
++ 
+  # ==================== Installation ====================
+  
+  ## If we let lib-src do its own installation, that means we
 ***************
 *** 286,292 ****
   install: all install-arch-indep install-arch-dep install-leim blessmail
@@ -101,7 +163,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ### It would be nice to do something for a parallel make
   ### to ensure that install-arch-indep finishes before this starts.
   install-arch-dep: mkdir
---- 300,307 ----
+--- 312,319 ----
   install: all install-arch-indep install-arch-dep install-leim blessmail
   	@true
   
@@ -122,7 +184,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   ### Install the files that are machine-independent.
   ### Most of them come straight from the distribution;
---- 310,324 ----
+--- 322,336 ----
   	    exec_prefix=${exec_prefix} bindir=${bindir} \
   	    libexecdir=${libexecdir} archlibdir=${archlibdir} \
   	    INSTALL_STRIP=${INSTALL_STRIP})
@@ -153,7 +215,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   	-set ${COPYDESTS} ; \
   	mkdir ${COPYDESTS} ; \
   	chmod ugo+rx ${COPYDESTS} ; \
---- 328,342 ----
+--- 340,354 ----
   ## Note that we copy DOC* and then delete DOC
   ## as a workaround for a bug in tar on Ultrix 4.2.
   install-arch-indep: mkdir
@@ -170,8 +232,20 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   	mkdir ${COPYDESTS} ; \
   	chmod ugo+rx ${COPYDESTS} ; \
 ***************
+*** 398,403 ****
+--- 432,440 ----
+  	  done; \
+  	else true; fi
+  	-chmod -R a+r ${COPYDESTS} ${infodir}
++ 	if [ -f perl/Makefile ]; then \
++ 	  (cd perl; $(MAKE) install $(MFLAGS)); \
++ 	else true; fi
+  	thisdir=`/bin/pwd`; \
+  	cd ${srcdir}/etc; \
+  	for page in emacs etags ctags ; do \
+***************
 *** 424,429 ****
---- 446,452 ----
+--- 461,467 ----
   mkdir: FRC
   	$(srcdir)/mkinstalldirs ${COPYDESTS} ${infodir} ${man1dir} \
   	  ${bindir} ${datadir} ${docdir} ${libexecdir} \
@@ -188,7 +262,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   	  if [ -d $${dir} ]; then			\
   	    case `(cd $${dir} ; /bin/pwd)` in		\
   	      `(cd ${srcdir} ; /bin/pwd)`* ) ;;		\
---- 461,467 ----
+--- 476,482 ----
   	 $(MAKE) $(MFLAGS) uninstall			\
   	    prefix=${prefix} exec_prefix=${exec_prefix}	\
   	    bindir=${bindir} libexecdir=${libexecdir} archlibdir=${archlibdir})
@@ -205,7 +279,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   
   FRC:
---- 476,482 ----
+--- 491,497 ----
   	done
   	(cd ${infodir} && rm -f cl* dired-x* ediff* emacs* forms* gnus* info* mh-e* sc* vip*)
   	(cd ${man1dir}  && rm -f emacs.1 etags.1 ctags.1)
@@ -213,11 +287,68 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   
   FRC:
-Only in perlmacs-0.13: TODO
-Only in perlmacs-0.13: aclocal.m4
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/configure perlmacs-0.13/configure
+***************
+*** 474,479 ****
+--- 512,518 ----
+  	(cd lib-src;  $(MAKE) $(MFLAGS) mostlyclean)
+  	-(cd man &&   $(MAKE) $(MFLAGS) mostlyclean)
+  	(cd leim;     $(MAKE) $(MFLAGS) mostlyclean)
++ 	(cd perl; test -f Makefile && $(MAKE) $(MFLAGS) clean)
+  
+  ### `clean'
+  ###      Delete all files from the current directory that are normally
+***************
+*** 490,495 ****
+--- 529,535 ----
+  	(cd lib-src;  $(MAKE) $(MFLAGS) clean)
+  	-(cd man &&   $(MAKE) $(MFLAGS) clean)
+  	(cd leim;     $(MAKE) $(MFLAGS) clean)
++ 	(cd perl; test -f Makefile && $(MAKE) $(MFLAGS) clean)
+  
+  ### `distclean'
+  ###      Delete all files from the current directory that are created by
+***************
+*** 508,513 ****
+--- 548,554 ----
+  	(cd lib-src;  $(MAKE) $(MFLAGS) distclean)
+  	(cd man &&    $(MAKE) $(MFLAGS) distclean)
+  	(cd leim;     $(MAKE) $(MFLAGS) distclean)
++ 	(cd perl; test -f Makefile && $(MAKE) $(MFLAGS) distclean)
+  	${top_distclean}
+  
+  ### `maintainer-clean'
+***************
+*** 528,533 ****
+--- 569,575 ----
+  	(cd lib-src;  $(MAKE) $(MFLAGS) maintainer-clean)
+  	-(cd man &&   $(MAKE) $(MFLAGS) maintainer-clean)
+  	(cd leim;     $(MAKE) $(MFLAGS) maintainer-clean)
++ 	(cd perl; test -f Makefile && $(MAKE) $(MFLAGS) distclean)
+  	${top_distclean}
+  
+  ### This doesn't actually appear in the coding standards, but Karl
+Only in perlmacs-0.14: TODO
+Only in perlmacs-0.14: aclocal.m4
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/configure perlmacs-0.14/configure
 *** emacs-20.3/configure	Mon Jul 27 04:17:07 1998
---- perlmacs-0.13/configure	Fri Mar 19 21:24:40 1999
+--- perlmacs-0.14/configure	Thu Mar 30 02:01:28 2000
+***************
+*** 1,7 ****
+  #! /bin/sh
+  
+  # Guess values for system-dependent variables and create Makefiles.
+! # Generated automatically using autoconf version 2.12 
+  # Copyright (C) 1992, 93, 94, 95, 96 Free Software Foundation, Inc.
+  #
+  # This configure script is free software; the Free Software Foundation
+--- 1,7 ----
+  #! /bin/sh
+  
+  # Guess values for system-dependent variables and create Makefiles.
+! # Generated automatically using autoconf version 2.13 
+  # Copyright (C) 1992, 93, 94, 95, 96 Free Software Foundation, Inc.
+  #
+  # This configure script is free software; the Free Software Foundation
 ***************
 *** 24,29 ****
 --- 24,31 ----
@@ -230,6 +361,56 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ac_help="$ac_help
     --with-x                use the X Window System"
 ***************
+*** 65,70 ****
+--- 67,73 ----
+  # Initialize some other variables.
+  subdirs=
+  MFLAGS= MAKEFLAGS=
++ SHELL=${CONFIG_SHELL-/bin/sh}
+  # Maximum number of lines to put in a shell here document.
+  ac_max_here_lines=12
+  
+***************
+*** 348,354 ****
+      verbose=yes ;;
+  
+    -version | --version | --versio | --versi | --vers)
+!     echo "configure generated by autoconf version 2.12"
+      exit 0 ;;
+  
+    -with-* | --with-*)
+--- 351,357 ----
+      verbose=yes ;;
+  
+    -version | --version | --versio | --versi | --vers)
+!     echo "configure generated by autoconf version 2.13"
+      exit 0 ;;
+  
+    -with-* | --with-*)
+***************
+*** 518,526 ****
+  # CFLAGS is not in ac_cpp because -g, -O, etc. are not valid cpp options.
+  ac_cpp='$CPP $CPPFLAGS'
+  ac_compile='${CC-cc} -c $CFLAGS $CPPFLAGS conftest.$ac_ext 1>&5'
+! ac_link='${CC-cc} -o conftest $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS 1>&5'
+  cross_compiling=$ac_cv_prog_cc_cross
+  
+  if (echo "testing\c"; echo 1,2,3) | grep c >/dev/null; then
+    # Stardent Vistra SVR4 grep lacks -e, says ghazi@caip.rutgers.edu.
+    if (echo -n testing; echo 1,2,3) | sed s/-n/xn/ | grep xn >/dev/null; then
+--- 521,531 ----
+  # CFLAGS is not in ac_cpp because -g, -O, etc. are not valid cpp options.
+  ac_cpp='$CPP $CPPFLAGS'
+  ac_compile='${CC-cc} -c $CFLAGS $CPPFLAGS conftest.$ac_ext 1>&5'
+! ac_link='${CC-cc} -o conftest${ac_exeext} $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS 1>&5'
+  cross_compiling=$ac_cv_prog_cc_cross
+  
++ ac_exeext=
++ ac_objext=o
+  if (echo "testing\c"; echo 1,2,3) | grep c >/dev/null; then
+    # Stardent Vistra SVR4 grep lacks -e, says ghazi@caip.rutgers.edu.
+    if (echo -n testing; echo 1,2,3) | sed s/-n/xn/ | grep xn >/dev/null; then
+***************
 *** 541,548 ****
   '${datadir}/emacs/site-lisp:${datadir}/emacs/${version}/leim'
   lisppath='${locallisppath}:${lispdir}'
@@ -239,7 +420,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   # Check whether --with-gcc or --without-gcc was given.
   if test "${with_gcc+set}" = set; then
---- 543,553 ----
+--- 546,556 ----
   '${datadir}/emacs/site-lisp:${datadir}/emacs/${version}/leim'
   lisppath='${locallisppath}:${lispdir}'
   etcdir='${datadir}/emacs/${version}/etc'
@@ -253,7 +434,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   if test "${with_gcc+set}" = set; then
 ***************
 *** 604,609 ****
---- 609,620 ----
+--- 612,623 ----
   
   fi
   
@@ -267,7 +448,12 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   if test "${with_x_toolkit+set}" = set; then
     withval="$with_x_toolkit"
 ***************
-*** 696,702 ****
+*** 691,716 ****
+  
+  
+  # Make sure we can run config.sub.
+! if $ac_config_sub sun4 >/dev/null 2>&1; then :
+  else { echo "configure: error: can not run $ac_config_sub" 1>&2; exit 1; }
   fi
   
   echo $ac_n "checking host system type""... $ac_c" 1>&6
@@ -275,16 +461,49 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   host_alias=$host
   case "$host_alias" in
---- 707,713 ----
+  NONE)
+    case $nonopt in
+    NONE)
+!     if host_alias=`$ac_config_guess`; then :
+      else { echo "configure: error: can not guess host type; you must specify one" 1>&2; exit 1; }
+      fi ;;
+    *) host_alias=$nonopt ;;
+    esac ;;
+  esac
+  
+! host=`$ac_config_sub $host_alias`
+  host_cpu=`echo $host | sed 's/^\([^-]*\)-\([^-]*\)-\(.*\)$/\1/'`
+  host_vendor=`echo $host | sed 's/^\([^-]*\)-\([^-]*\)-\(.*\)$/\2/'`
+  host_os=`echo $host | sed 's/^\([^-]*\)-\([^-]*\)-\(.*\)$/\3/'`
+--- 705,730 ----
+  
+  
+  # Make sure we can run config.sub.
+! if ${CONFIG_SHELL-/bin/sh} $ac_config_sub sun4 >/dev/null 2>&1; then :
+  else { echo "configure: error: can not run $ac_config_sub" 1>&2; exit 1; }
   fi
   
   echo $ac_n "checking host system type""... $ac_c" 1>&6
-! echo "configure:711: checking host system type" >&5
+! echo "configure:714: checking host system type" >&5
   
   host_alias=$host
   case "$host_alias" in
+  NONE)
+    case $nonopt in
+    NONE)
+!     if host_alias=`${CONFIG_SHELL-/bin/sh} $ac_config_guess`; then :
+      else { echo "configure: error: can not guess host type; you must specify one" 1>&2; exit 1; }
+      fi ;;
+    *) host_alias=$nonopt ;;
+    esac ;;
+  esac
+  
+! host=`${CONFIG_SHELL-/bin/sh} $ac_config_sub $host_alias`
+  host_cpu=`echo $host | sed 's/^\([^-]*\)-\([^-]*\)-\(.*\)$/\1/'`
+  host_vendor=`echo $host | sed 's/^\([^-]*\)-\([^-]*\)-\(.*\)$/\2/'`
+  host_os=`echo $host | sed 's/^\([^-]*\)-\([^-]*\)-\(.*\)$/\3/'`
 ***************
-*** 1613,1619 ****
+*** 1613,1627 ****
     * ) # Extract the first word of "gcc", so it can be a program name with args.
   set dummy gcc; ac_word=$2
   echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
@@ -292,16 +511,33 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   if eval "test \"`echo '$''{'ac_cv_prog_CC'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
---- 1624,1630 ----
+    if test -n "$CC"; then
+    ac_cv_prog_CC="$CC" # Let the user override the test.
+  else
+!   IFS="${IFS= 	}"; ac_save_ifs="$IFS"; IFS="${IFS}:"
+!   for ac_dir in $PATH; do
+      test -z "$ac_dir" && ac_dir=.
+      if test -f $ac_dir/$ac_word; then
+        ac_cv_prog_CC="gcc"
+--- 1627,1642 ----
     * ) # Extract the first word of "gcc", so it can be a program name with args.
   set dummy gcc; ac_word=$2
   echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
-! echo "configure:1628: checking for $ac_word" >&5
+! echo "configure:1631: checking for $ac_word" >&5
   if eval "test \"`echo '$''{'ac_cv_prog_CC'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
+    if test -n "$CC"; then
+    ac_cv_prog_CC="$CC" # Let the user override the test.
+  else
+!   IFS="${IFS= 	}"; ac_save_ifs="$IFS"; IFS=":"
+!   ac_dummy="$PATH"
+!   for ac_dir in $ac_dummy; do
+      test -z "$ac_dir" && ac_dir=.
+      if test -f $ac_dir/$ac_word; then
+        ac_cv_prog_CC="gcc"
 ***************
-*** 1642,1648 ****
+*** 1642,1657 ****
     # Extract the first word of "cc", so it can be a program name with args.
   set dummy cc; ac_word=$2
   echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
@@ -309,16 +545,39 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   if eval "test \"`echo '$''{'ac_cv_prog_CC'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
---- 1653,1659 ----
+    if test -n "$CC"; then
+    ac_cv_prog_CC="$CC" # Let the user override the test.
+  else
+!   IFS="${IFS= 	}"; ac_save_ifs="$IFS"; IFS="${IFS}:"
+    ac_prog_rejected=no
+!   for ac_dir in $PATH; do
+      test -z "$ac_dir" && ac_dir=.
+      if test -f $ac_dir/$ac_word; then
+        if test "$ac_dir/$ac_word" = "/usr/ucb/cc"; then
+--- 1657,1673 ----
     # Extract the first word of "cc", so it can be a program name with args.
   set dummy cc; ac_word=$2
   echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
-! echo "configure:1657: checking for $ac_word" >&5
+! echo "configure:1661: checking for $ac_word" >&5
   if eval "test \"`echo '$''{'ac_cv_prog_CC'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
+    if test -n "$CC"; then
+    ac_cv_prog_CC="$CC" # Let the user override the test.
+  else
+!   IFS="${IFS= 	}"; ac_save_ifs="$IFS"; IFS=":"
+    ac_prog_rejected=no
+!   ac_dummy="$PATH"
+!   for ac_dir in $ac_dummy; do
+      test -z "$ac_dir" && ac_dir=.
+      if test -f $ac_dir/$ac_word; then
+        if test "$ac_dir/$ac_word" = "/usr/ucb/cc"; then
 ***************
-*** 1690,1696 ****
+*** 1686,1710 ****
+    echo "$ac_t""no" 1>&6
+  fi
+  
+    test -z "$CC" && { echo "configure: error: no acceptable cc found in \$PATH" 1>&2; exit 1; }
   fi
   
   echo $ac_n "checking whether the C compiler ($CC $CFLAGS $LDFLAGS) works""... $ac_c" 1>&6
@@ -326,19 +585,12 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   ac_ext=c
   # CFLAGS is not in ac_cpp because -g, -O, etc. are not valid cpp options.
---- 1701,1707 ----
-  fi
-  
-  echo $ac_n "checking whether the C compiler ($CC $CFLAGS $LDFLAGS) works""... $ac_c" 1>&6
-! echo "configure:1705: checking whether the C compiler ($CC $CFLAGS $LDFLAGS) works" >&5
-  
-  ac_ext=c
-  # CFLAGS is not in ac_cpp because -g, -O, etc. are not valid cpp options.
-***************
-*** 1700,1710 ****
+  ac_cpp='$CPP $CPPFLAGS'
+  ac_compile='${CC-cc} -c $CFLAGS $CPPFLAGS conftest.$ac_ext 1>&5'
+! ac_link='${CC-cc} -o conftest $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS 1>&5'
   cross_compiling=$ac_cv_prog_cc_cross
   
-  cat > conftest.$ac_ext <<EOF
+! cat > conftest.$ac_ext <<EOF
 ! #line 1704 "configure"
   #include "confdefs.h"
   main(){return(0);}
@@ -347,20 +599,76 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     ac_cv_prog_cc_works=yes
     # If we can't run a trivial program, we are probably using a cross compiler.
     if (./conftest; exit) 2>/dev/null; then
---- 1711,1721 ----
+--- 1702,1762 ----
+    echo "$ac_t""no" 1>&6
+  fi
+  
++   if test -z "$CC"; then
++     case "`uname -s`" in
++     *win32* | *WIN32*)
++       # Extract the first word of "cl", so it can be a program name with args.
++ set dummy cl; ac_word=$2
++ echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
++ echo "configure:1712: checking for $ac_word" >&5
++ if eval "test \"`echo '$''{'ac_cv_prog_CC'+set}'`\" = set"; then
++   echo $ac_n "(cached) $ac_c" 1>&6
++ else
++   if test -n "$CC"; then
++   ac_cv_prog_CC="$CC" # Let the user override the test.
++ else
++   IFS="${IFS= 	}"; ac_save_ifs="$IFS"; IFS=":"
++   ac_dummy="$PATH"
++   for ac_dir in $ac_dummy; do
++     test -z "$ac_dir" && ac_dir=.
++     if test -f $ac_dir/$ac_word; then
++       ac_cv_prog_CC="cl"
++       break
++     fi
++   done
++   IFS="$ac_save_ifs"
++ fi
++ fi
++ CC="$ac_cv_prog_CC"
++ if test -n "$CC"; then
++   echo "$ac_t""$CC" 1>&6
++ else
++   echo "$ac_t""no" 1>&6
++ fi
++  ;;
++     esac
++   fi
+    test -z "$CC" && { echo "configure: error: no acceptable cc found in \$PATH" 1>&2; exit 1; }
+  fi
+  
+  echo $ac_n "checking whether the C compiler ($CC $CFLAGS $LDFLAGS) works""... $ac_c" 1>&6
+! echo "configure:1744: checking whether the C compiler ($CC $CFLAGS $LDFLAGS) works" >&5
+  
+  ac_ext=c
+  # CFLAGS is not in ac_cpp because -g, -O, etc. are not valid cpp options.
+  ac_cpp='$CPP $CPPFLAGS'
+  ac_compile='${CC-cc} -c $CFLAGS $CPPFLAGS conftest.$ac_ext 1>&5'
+! ac_link='${CC-cc} -o conftest${ac_exeext} $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS 1>&5'
   cross_compiling=$ac_cv_prog_cc_cross
   
-  cat > conftest.$ac_ext <<EOF
-! #line 1715 "configure"
+! cat > conftest.$ac_ext << EOF
+! 
+! #line 1755 "configure"
   #include "confdefs.h"
++ 
   main(){return(0);}
   EOF
-! if { (eval echo configure:1719: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:1760: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     ac_cv_prog_cc_works=yes
     # If we can't run a trivial program, we are probably using a cross compiler.
     if (./conftest; exit) 2>/dev/null; then
 ***************
-*** 1724,1735 ****
+*** 1718,1735 ****
+    ac_cv_prog_cc_works=no
+  fi
+  rm -fr conftest*
+  
+  echo "$ac_t""$ac_cv_prog_cc_works" 1>&6
+  if test $ac_cv_prog_cc_works = no; then
     { echo "configure: error: installation or configuration problem: C compiler cannot create executables." 1>&2; exit 1; }
   fi
   echo $ac_n "checking whether the C compiler ($CC $CFLAGS $LDFLAGS) is a cross-compiler""... $ac_c" 1>&6
@@ -373,16 +681,28 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   if eval "test \"`echo '$''{'ac_cv_prog_gcc'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
---- 1735,1746 ----
+--- 1770,1793 ----
+    ac_cv_prog_cc_works=no
+  fi
+  rm -fr conftest*
++ ac_ext=c
++ # CFLAGS is not in ac_cpp because -g, -O, etc. are not valid cpp options.
++ ac_cpp='$CPP $CPPFLAGS'
++ ac_compile='${CC-cc} -c $CFLAGS $CPPFLAGS conftest.$ac_ext 1>&5'
++ ac_link='${CC-cc} -o conftest${ac_exeext} $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS 1>&5'
++ cross_compiling=$ac_cv_prog_cc_cross
+  
+  echo "$ac_t""$ac_cv_prog_cc_works" 1>&6
+  if test $ac_cv_prog_cc_works = no; then
     { echo "configure: error: installation or configuration problem: C compiler cannot create executables." 1>&2; exit 1; }
   fi
   echo $ac_n "checking whether the C compiler ($CC $CFLAGS $LDFLAGS) is a cross-compiler""... $ac_c" 1>&6
-! echo "configure:1739: checking whether the C compiler ($CC $CFLAGS $LDFLAGS) is a cross-compiler" >&5
+! echo "configure:1786: checking whether the C compiler ($CC $CFLAGS $LDFLAGS) is a cross-compiler" >&5
   echo "$ac_t""$ac_cv_prog_cc_cross" 1>&6
   cross_compiling=$ac_cv_prog_cc_cross
   
   echo $ac_n "checking whether we are using GNU C""... $ac_c" 1>&6
-! echo "configure:1744: checking whether we are using GNU C" >&5
+! echo "configure:1791: checking whether we are using GNU C" >&5
   if eval "test \"`echo '$''{'ac_cv_prog_gcc'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
@@ -395,31 +715,82 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     ac_cv_prog_gcc=yes
   else
     ac_cv_prog_gcc=no
---- 1749,1755 ----
+--- 1796,1802 ----
     yes;
   #endif
   EOF
-! if { ac_try='${CC-cc} -E conftest.c'; { (eval echo configure:1753: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }; } | egrep yes >/dev/null 2>&1; then
+! if { ac_try='${CC-cc} -E conftest.c'; { (eval echo configure:1800: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }; } | egrep yes >/dev/null 2>&1; then
     ac_cv_prog_gcc=yes
   else
     ac_cv_prog_gcc=no
 ***************
-*** 1753,1759 ****
-    ac_save_CFLAGS="$CFLAGS"
-    CFLAGS=
-    echo $ac_n "checking whether ${CC-cc} accepts -g""... $ac_c" 1>&6
+*** 1749,1759 ****
+  
+  if test $ac_cv_prog_gcc = yes; then
+    GCC=yes
+!   ac_test_CFLAGS="${CFLAGS+set}"
+!   ac_save_CFLAGS="$CFLAGS"
+!   CFLAGS=
+!   echo $ac_n "checking whether ${CC-cc} accepts -g""... $ac_c" 1>&6
 ! echo "configure:1757: checking whether ${CC-cc} accepts -g" >&5
   if eval "test \"`echo '$''{'ac_cv_prog_cc_g'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
---- 1764,1770 ----
-    ac_save_CFLAGS="$CFLAGS"
-    CFLAGS=
-    echo $ac_n "checking whether ${CC-cc} accepts -g""... $ac_c" 1>&6
-! echo "configure:1768: checking whether ${CC-cc} accepts -g" >&5
+--- 1807,1821 ----
+  
+  if test $ac_cv_prog_gcc = yes; then
+    GCC=yes
+! else
+!   GCC=
+! fi
+! 
+! ac_test_CFLAGS="${CFLAGS+set}"
+! ac_save_CFLAGS="$CFLAGS"
+! CFLAGS=
+! echo $ac_n "checking whether ${CC-cc} accepts -g""... $ac_c" 1>&6
+! echo "configure:1819: checking whether ${CC-cc} accepts -g" >&5
   if eval "test \"`echo '$''{'ac_cv_prog_cc_g'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
+***************
+*** 1768,1783 ****
+  fi
+  
+  echo "$ac_t""$ac_cv_prog_cc_g" 1>&6
+!   if test "$ac_test_CFLAGS" = set; then
+!     CFLAGS="$ac_save_CFLAGS"
+!   elif test $ac_cv_prog_cc_g = yes; then
+      CFLAGS="-g -O2"
+    else
+!     CFLAGS="-O2"
+    fi
+  else
+!   GCC=
+!   test "${CFLAGS+set}" = set || CFLAGS="-g"
+  fi
+  
+  esac
+--- 1830,1849 ----
+  fi
+  
+  echo "$ac_t""$ac_cv_prog_cc_g" 1>&6
+! if test "$ac_test_CFLAGS" = set; then
+!   CFLAGS="$ac_save_CFLAGS"
+! elif test $ac_cv_prog_cc_g = yes; then
+!   if test "$GCC" = yes; then
+      CFLAGS="-g -O2"
+    else
+!     CFLAGS="-g"
+    fi
+  else
+!   if test "$GCC" = yes; then
+!     CFLAGS="-O2"
+!   else
+!     CFLAGS=
+!   fi
+  fi
+  
+  esac
 ***************
 *** 1829,1835 ****
   #### #undef clause to src/config.h.in for autoconf to modify.
@@ -429,11 +800,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   if eval "test \"`echo '$''{'ac_cv_prog_LN_S'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
---- 1840,1846 ----
+--- 1895,1901 ----
   #### #undef clause to src/config.h.in for autoconf to modify.
   
   echo $ac_n "checking whether ln -s works""... $ac_c" 1>&6
-! echo "configure:1844: checking whether ln -s works" >&5
+! echo "configure:1899: checking whether ln -s works" >&5
   if eval "test \"`echo '$''{'ac_cv_prog_LN_S'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
@@ -446,16 +817,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   # On Suns, sometimes $CPP names a directory.
   if test -n "$CPP" && test -d "$CPP"; then
     CPP=
---- 1861,1867 ----
+--- 1916,1922 ----
   fi
   
   echo $ac_n "checking how to run the C preprocessor""... $ac_c" 1>&6
-! echo "configure:1865: checking how to run the C preprocessor" >&5
+! echo "configure:1920: checking how to run the C preprocessor" >&5
   # On Suns, sometimes $CPP names a directory.
   if test -n "$CPP" && test -d "$CPP"; then
     CPP=
 ***************
-*** 1865,1877 ****
+*** 1865,1878 ****
     # On the NeXT, cc -E runs the code through the compiler's parser,
     # not just through cpp.
     cat > conftest.$ac_ext <<EOF
@@ -466,25 +837,27 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
 ! { (eval echo configure:1875: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! ac_err=`grep -v '^ *+' conftest.out`
   if test -z "$ac_err"; then
     :
---- 1876,1888 ----
+  else
+--- 1931,1944 ----
     # On the NeXT, cc -E runs the code through the compiler's parser,
     # not just through cpp.
     cat > conftest.$ac_ext <<EOF
-! #line 1880 "configure"
+! #line 1935 "configure"
   #include "confdefs.h"
   #include <assert.h>
   Syntax Error
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-! { (eval echo configure:1886: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! { (eval echo configure:1941: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+! ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
   if test -z "$ac_err"; then
     :
+  else
 ***************
-*** 1882,1894 ****
+*** 1882,1895 ****
     rm -rf conftest*
     CPP="${CC-cc} -E -traditional-cpp"
     cat > conftest.$ac_ext <<EOF
@@ -495,25 +868,59 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
 ! { (eval echo configure:1892: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! ac_err=`grep -v '^ *+' conftest.out`
   if test -z "$ac_err"; then
     :
---- 1893,1905 ----
+  else
+--- 1948,1978 ----
     rm -rf conftest*
     CPP="${CC-cc} -E -traditional-cpp"
     cat > conftest.$ac_ext <<EOF
-! #line 1897 "configure"
+! #line 1952 "configure"
   #include "confdefs.h"
   #include <assert.h>
   Syntax Error
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-! { (eval echo configure:1903: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! { (eval echo configure:1958: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+! ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
+! if test -z "$ac_err"; then
+!   :
+! else
+!   echo "$ac_err" >&5
+!   echo "configure: failed program was:" >&5
+!   cat conftest.$ac_ext >&5
+!   rm -rf conftest*
+!   CPP="${CC-cc} -nologo -E"
+!   cat > conftest.$ac_ext <<EOF
+! #line 1969 "configure"
+! #include "confdefs.h"
+! #include <assert.h>
+! Syntax Error
+! EOF
+! ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
+! { (eval echo configure:1975: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+! ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
   if test -z "$ac_err"; then
     :
+  else
 ***************
-*** 1921,1927 ****
+*** 1902,1907 ****
+--- 1985,1992 ----
+  rm -f conftest*
+  fi
+  rm -f conftest*
++ fi
++ rm -f conftest*
+    ac_cv_prog_CPP="$CPP"
+  fi
+    CPP="$ac_cv_prog_CPP"
+***************
+*** 1917,1944 ****
+  # SunOS /usr/etc/install
+  # IRIX /sbin/install
+  # AIX /bin/install
+  # AFS /usr/afsws/bin/install, which mishandles nonexistent args
   # SVR4 /usr/ucb/install, which tries to use the nonexistent group "staff"
   # ./install, which can be erroneously created by make from ./install.sh.
   echo $ac_n "checking for a BSD compatible install""... $ac_c" 1>&6
@@ -521,16 +928,67 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   if test -z "$INSTALL"; then
   if eval "test \"`echo '$''{'ac_cv_path_install'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 1932,1938 ----
+  else
+!     IFS="${IFS= 	}"; ac_save_IFS="$IFS"; IFS="${IFS}:"
+    for ac_dir in $PATH; do
+      # Account for people who put trailing slashes in PATH elements.
+      case "$ac_dir/" in
+      /|./|.//|/etc/*|/usr/sbin/*|/usr/etc/*|/sbin/*|/usr/afsws/bin/*|/usr/ucb/*) ;;
+      *)
+        # OSF1 and SCO ODT 3.0 have their own names for install.
+!       for ac_prog in ginstall installbsd scoinst install; do
+          if test -f $ac_dir/$ac_prog; then
+  	  if test $ac_prog = install &&
+              grep dspmsg $ac_dir/$ac_prog >/dev/null 2>&1; then
+  	    # AIX install.  It has an incompatible calling convention.
+- 	    # OSF/1 installbsd also uses dspmsg, but is usable.
+  	    :
+  	  else
+  	    ac_cv_path_install="$ac_dir/$ac_prog -c"
+--- 2002,2031 ----
+  # SunOS /usr/etc/install
+  # IRIX /sbin/install
+  # AIX /bin/install
++ # AIX 4 /usr/bin/installbsd, which doesn't work without a -g flag
+  # AFS /usr/afsws/bin/install, which mishandles nonexistent args
   # SVR4 /usr/ucb/install, which tries to use the nonexistent group "staff"
   # ./install, which can be erroneously created by make from ./install.sh.
   echo $ac_n "checking for a BSD compatible install""... $ac_c" 1>&6
-! echo "configure:1936: checking for a BSD compatible install" >&5
+! echo "configure:2011: checking for a BSD compatible install" >&5
   if test -z "$INSTALL"; then
   if eval "test \"`echo '$''{'ac_cv_path_install'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
+  else
+!     IFS="${IFS= 	}"; ac_save_IFS="$IFS"; IFS=":"
+    for ac_dir in $PATH; do
+      # Account for people who put trailing slashes in PATH elements.
+      case "$ac_dir/" in
+      /|./|.//|/etc/*|/usr/sbin/*|/usr/etc/*|/sbin/*|/usr/afsws/bin/*|/usr/ucb/*) ;;
+      *)
+        # OSF1 and SCO ODT 3.0 have their own names for install.
+!       # Don't use installbsd from OSF since it installs stuff as root
+!       # by default.
+!       for ac_prog in ginstall scoinst install; do
+          if test -f $ac_dir/$ac_prog; then
+  	  if test $ac_prog = install &&
+              grep dspmsg $ac_dir/$ac_prog >/dev/null 2>&1; then
+  	    # AIX install.  It has an incompatible calling convention.
+  	    :
+  	  else
+  	    ac_cv_path_install="$ac_dir/$ac_prog -c"
 ***************
-*** 1975,1981 ****
+*** 1968,1973 ****
+--- 2055,2062 ----
+  # It thinks the first close brace ends the variable substitution.
+  test -z "$INSTALL_PROGRAM" && INSTALL_PROGRAM='${INSTALL}'
+  
++ test -z "$INSTALL_SCRIPT" && INSTALL_SCRIPT='${INSTALL_PROGRAM}'
++ 
+  test -z "$INSTALL_DATA" && INSTALL_DATA='${INSTALL} -m 644'
+  
+  for ac_prog in 'bison -y' byacc
+***************
+*** 1975,1989 ****
   # Extract the first word of "$ac_prog", so it can be a program name with args.
   set dummy $ac_prog; ac_word=$2
   echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
@@ -538,14 +996,31 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   if eval "test \"`echo '$''{'ac_cv_prog_YACC'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
---- 1986,1992 ----
+    if test -n "$YACC"; then
+    ac_cv_prog_YACC="$YACC" # Let the user override the test.
+  else
+!   IFS="${IFS= 	}"; ac_save_ifs="$IFS"; IFS="${IFS}:"
+!   for ac_dir in $PATH; do
+      test -z "$ac_dir" && ac_dir=.
+      if test -f $ac_dir/$ac_word; then
+        ac_cv_prog_YACC="$ac_prog"
+--- 2064,2079 ----
   # Extract the first word of "$ac_prog", so it can be a program name with args.
   set dummy $ac_prog; ac_word=$2
   echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
-! echo "configure:1990: checking for $ac_word" >&5
+! echo "configure:2068: checking for $ac_word" >&5
   if eval "test \"`echo '$''{'ac_cv_prog_YACC'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
+    if test -n "$YACC"; then
+    ac_cv_prog_YACC="$YACC" # Let the user override the test.
+  else
+!   IFS="${IFS= 	}"; ac_save_ifs="$IFS"; IFS=":"
+!   ac_dummy="$PATH"
+!   for ac_dir in $ac_dummy; do
+      test -z "$ac_dir" && ac_dir=.
+      if test -f $ac_dir/$ac_word; then
+        ac_cv_prog_YACC="$ac_prog"
 ***************
 *** 2006,2014 ****
   
@@ -557,18 +1032,18 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #ifdef _AIX
     yes
---- 2017,2025 ----
+--- 2096,2104 ----
   
   
   echo $ac_n "checking for AIX""... $ac_c" 1>&6
-! echo "configure:2021: checking for AIX" >&5
+! echo "configure:2100: checking for AIX" >&5
   cat > conftest.$ac_ext <<EOF
-! #line 2023 "configure"
+! #line 2102 "configure"
   #include "confdefs.h"
   #ifdef _AIX
     yes
 ***************
-*** 2034,2050 ****
+*** 2034,2051 ****
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
@@ -583,27 +1058,29 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
 ! { (eval echo configure:2048: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! ac_err=`grep -v '^ *+' conftest.out`
   if test -z "$ac_err"; then
     rm -rf conftest*
---- 2045,2061 ----
+    eval "ac_cv_header_$ac_safe=yes"
+--- 2124,2141 ----
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-! echo "configure:2049: checking for $ac_hdr" >&5
+! echo "configure:2128: checking for $ac_hdr" >&5
   if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 2054 "configure"
+! #line 2133 "configure"
   #include "confdefs.h"
   #include <$ac_hdr>
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-! { (eval echo configure:2059: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! { (eval echo configure:2138: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+! ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
   if test -z "$ac_err"; then
     rm -rf conftest*
+    eval "ac_cv_header_$ac_safe=yes"
 ***************
 *** 2071,2082 ****
   done
@@ -618,36 +1095,38 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #include <stdlib.h>
   #include <stdarg.h>
---- 2082,2093 ----
+--- 2161,2172 ----
   done
   
   echo $ac_n "checking for ANSI C header files""... $ac_c" 1>&6
-! echo "configure:2086: checking for ANSI C header files" >&5
+! echo "configure:2165: checking for ANSI C header files" >&5
   if eval "test \"`echo '$''{'ac_cv_header_stdc'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 2091 "configure"
+! #line 2170 "configure"
   #include "confdefs.h"
   #include <stdlib.h>
   #include <stdarg.h>
 ***************
-*** 2084,2090 ****
+*** 2084,2091 ****
   #include <float.h>
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
 ! { (eval echo configure:2088: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! ac_err=`grep -v '^ *+' conftest.out`
   if test -z "$ac_err"; then
     rm -rf conftest*
---- 2095,2101 ----
+    ac_cv_header_stdc=yes
+--- 2174,2181 ----
   #include <float.h>
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-! { (eval echo configure:2099: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! { (eval echo configure:2178: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+! ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
   if test -z "$ac_err"; then
     rm -rf conftest*
+    ac_cv_header_stdc=yes
 ***************
 *** 2101,2107 ****
   if test $ac_cv_header_stdc = yes; then
@@ -657,11 +1136,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #include <string.h>
   EOF
---- 2112,2118 ----
+--- 2191,2197 ----
   if test $ac_cv_header_stdc = yes; then
     # SunOS 4.x string.h does not declare mem*, contrary to ANSI.
   cat > conftest.$ac_ext <<EOF
-! #line 2116 "configure"
+! #line 2195 "configure"
   #include "confdefs.h"
   #include <string.h>
   EOF
@@ -674,11 +1153,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #include <stdlib.h>
   EOF
---- 2130,2136 ----
+--- 2209,2215 ----
   if test $ac_cv_header_stdc = yes; then
     # ISC 2.0.2 stdlib.h does not declare free, contrary to ANSI.
   cat > conftest.$ac_ext <<EOF
-! #line 2134 "configure"
+! #line 2213 "configure"
   #include "confdefs.h"
   #include <stdlib.h>
   EOF
@@ -691,11 +1170,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #include <ctype.h>
   #define ISLOWER(c) ('a' <= (c) && (c) <= 'z')
---- 2151,2157 ----
+--- 2230,2236 ----
     :
   else
     cat > conftest.$ac_ext <<EOF
-! #line 2155 "configure"
+! #line 2234 "configure"
   #include "confdefs.h"
   #include <ctype.h>
   #define ISLOWER(c) ('a' <= (c) && (c) <= 'z')
@@ -708,11 +1187,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   then
     :
   else
---- 2162,2168 ----
+--- 2241,2247 ----
   exit (0); }
   
   EOF
-! if { (eval echo configure:2166: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest && (./conftest; exit) 2>/dev/null
+! if { (eval echo configure:2245: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext} && (./conftest; exit) 2>/dev/null
   then
     :
   else
@@ -730,16 +1209,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #include <sys/types.h>
   #include <sys/time.h>
---- 2186,2197 ----
+--- 2265,2276 ----
   fi
   
   echo $ac_n "checking whether time.h and sys/time.h may both be included""... $ac_c" 1>&6
-! echo "configure:2190: checking whether time.h and sys/time.h may both be included" >&5
+! echo "configure:2269: checking whether time.h and sys/time.h may both be included" >&5
   if eval "test \"`echo '$''{'ac_cv_header_time'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 2195 "configure"
+! #line 2274 "configure"
   #include "confdefs.h"
   #include <sys/types.h>
   #include <sys/time.h>
@@ -752,11 +1231,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     ac_cv_header_time=yes
   else
---- 2200,2206 ----
+--- 2279,2285 ----
   struct tm *tp;
   ; return 0; }
   EOF
-! if { (eval echo configure:2204: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+! if { (eval echo configure:2283: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
     rm -rf conftest*
     ac_cv_header_time=yes
   else
@@ -774,16 +1253,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #include <sys/types.h>
   #include <signal.h>
---- 2221,2232 ----
+--- 2300,2311 ----
   fi
   
   echo $ac_n "checking for sys_siglist declaration in signal.h or unistd.h""... $ac_c" 1>&6
-! echo "configure:2225: checking for sys_siglist declaration in signal.h or unistd.h" >&5
+! echo "configure:2304: checking for sys_siglist declaration in signal.h or unistd.h" >&5
   if eval "test \"`echo '$''{'ac_cv_decl_sys_siglist'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 2230 "configure"
+! #line 2309 "configure"
   #include "confdefs.h"
   #include <sys/types.h>
   #include <signal.h>
@@ -796,11 +1275,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     ac_cv_decl_sys_siglist=yes
   else
---- 2238,2244 ----
+--- 2317,2323 ----
   char *msg = *(sys_siglist + 1);
   ; return 0; }
   EOF
-! if { (eval echo configure:2242: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+! if { (eval echo configure:2321: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
     rm -rf conftest*
     ac_cv_decl_sys_siglist=yes
   else
@@ -818,16 +1297,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #ifdef TIME_WITH_SYS_TIME
   #include <sys/time.h>
---- 2260,2271 ----
+--- 2339,2350 ----
   
   
   echo $ac_n "checking for struct utimbuf""... $ac_c" 1>&6
-! echo "configure:2264: checking for struct utimbuf" >&5
+! echo "configure:2343: checking for struct utimbuf" >&5
   if eval "test \"`echo '$''{'emacs_cv_struct_utimbuf'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 2269 "configure"
+! #line 2348 "configure"
   #include "confdefs.h"
   #ifdef TIME_WITH_SYS_TIME
   #include <sys/time.h>
@@ -840,11 +1319,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     emacs_cv_struct_utimbuf=yes
   else
---- 2284,2290 ----
+--- 2363,2369 ----
   static struct utimbuf x; x.actime = x.modtime;
   ; return 0; }
   EOF
-! if { (eval echo configure:2288: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+! if { (eval echo configure:2367: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
     rm -rf conftest*
     emacs_cv_struct_utimbuf=yes
   else
@@ -862,16 +1341,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #include <sys/types.h>
   #include <signal.h>
---- 2305,2316 ----
+--- 2384,2395 ----
   fi
   
   echo $ac_n "checking return type of signal handlers""... $ac_c" 1>&6
-! echo "configure:2309: checking return type of signal handlers" >&5
+! echo "configure:2388: checking return type of signal handlers" >&5
   if eval "test \"`echo '$''{'ac_cv_type_signal'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 2314 "configure"
+! #line 2393 "configure"
   #include "confdefs.h"
   #include <sys/types.h>
   #include <signal.h>
@@ -884,11 +1363,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     ac_cv_type_signal=void
   else
---- 2327,2333 ----
+--- 2406,2412 ----
   int i;
   ; return 0; }
   EOF
-! if { (eval echo configure:2331: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+! if { (eval echo configure:2410: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
     rm -rf conftest*
     ac_cv_type_signal=void
   else
@@ -906,16 +1385,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #ifdef TIME_WITH_SYS_TIME
   #include <sys/time.h>
---- 2347,2358 ----
+--- 2426,2437 ----
   
   
   echo $ac_n "checking for struct timeval""... $ac_c" 1>&6
-! echo "configure:2351: checking for struct timeval" >&5
+! echo "configure:2430: checking for struct timeval" >&5
   if eval "test \"`echo '$''{'emacs_cv_struct_timeval'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 2356 "configure"
+! #line 2435 "configure"
   #include "confdefs.h"
   #ifdef TIME_WITH_SYS_TIME
   #include <sys/time.h>
@@ -928,11 +1407,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     emacs_cv_struct_timeval=yes
   else
---- 2368,2374 ----
+--- 2447,2453 ----
   static struct timeval x; x.tv_sec = x.tv_usec;
   ; return 0; }
   EOF
-! if { (eval echo configure:2372: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+! if { (eval echo configure:2451: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
     rm -rf conftest*
     emacs_cv_struct_timeval=yes
   else
@@ -950,16 +1429,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #include <sys/types.h>
   #include <time.h>
---- 2390,2401 ----
+--- 2469,2480 ----
   fi
   
   echo $ac_n "checking whether struct tm is in sys/time.h or time.h""... $ac_c" 1>&6
-! echo "configure:2394: checking whether struct tm is in sys/time.h or time.h" >&5
+! echo "configure:2473: checking whether struct tm is in sys/time.h or time.h" >&5
   if eval "test \"`echo '$''{'ac_cv_struct_tm'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 2399 "configure"
+! #line 2478 "configure"
   #include "confdefs.h"
   #include <sys/types.h>
   #include <time.h>
@@ -972,11 +1451,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     ac_cv_struct_tm=time.h
   else
---- 2403,2409 ----
+--- 2482,2488 ----
   struct tm *tp; tp->tm_sec;
   ; return 0; }
   EOF
-! if { (eval echo configure:2407: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+! if { (eval echo configure:2486: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
     rm -rf conftest*
     ac_cv_struct_tm=time.h
   else
@@ -994,16 +1473,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #include <sys/types.h>
   #include <$ac_cv_struct_tm>
---- 2424,2435 ----
+--- 2503,2514 ----
   fi
   
   echo $ac_n "checking for tm_zone in struct tm""... $ac_c" 1>&6
-! echo "configure:2428: checking for tm_zone in struct tm" >&5
+! echo "configure:2507: checking for tm_zone in struct tm" >&5
   if eval "test \"`echo '$''{'ac_cv_struct_tm_zone'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 2433 "configure"
+! #line 2512 "configure"
   #include "confdefs.h"
   #include <sys/types.h>
   #include <$ac_cv_struct_tm>
@@ -1016,11 +1495,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     ac_cv_struct_tm_zone=yes
   else
---- 2437,2443 ----
+--- 2516,2522 ----
   struct tm tm; tm.tm_zone;
   ; return 0; }
   EOF
-! if { (eval echo configure:2441: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+! if { (eval echo configure:2520: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
     rm -rf conftest*
     ac_cv_struct_tm_zone=yes
   else
@@ -1038,16 +1517,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #include <time.h>
   #ifndef tzname /* For SGI.  */
---- 2457,2468 ----
+--- 2536,2547 ----
   
   else
     echo $ac_n "checking for tzname""... $ac_c" 1>&6
-! echo "configure:2461: checking for tzname" >&5
+! echo "configure:2540: checking for tzname" >&5
   if eval "test \"`echo '$''{'ac_cv_var_tzname'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 2466 "configure"
+! #line 2545 "configure"
   #include "confdefs.h"
   #include <time.h>
   #ifndef tzname /* For SGI.  */
@@ -1060,16 +1539,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     ac_cv_var_tzname=yes
   else
---- 2472,2478 ----
+--- 2551,2557 ----
   atoi(*tzname);
   ; return 0; }
   EOF
-! if { (eval echo configure:2476: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:2555: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     ac_cv_var_tzname=yes
   else
 ***************
-*** 2484,2495 ****
+*** 2484,2501 ****
   
   
   echo $ac_n "checking for working const""... $ac_c" 1>&6
@@ -1082,19 +1561,31 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   
   int main() {
---- 2495,2506 ----
+  
+  /* Ultrix mips cc rejects this.  */
+! typedef int charset[2]; const charset x;
+  /* SunOS 4.1.1 cc rejects this.  */
+  char const *const *ccp;
+  char **p;
+--- 2574,2591 ----
   
   
   echo $ac_n "checking for working const""... $ac_c" 1>&6
-! echo "configure:2499: checking for working const" >&5
+! echo "configure:2578: checking for working const" >&5
   if eval "test \"`echo '$''{'ac_cv_c_const'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 2504 "configure"
+! #line 2583 "configure"
   #include "confdefs.h"
   
   int main() {
+  
+  /* Ultrix mips cc rejects this.  */
+! typedef int charset[2]; const charset x = {0,0};
+  /* SunOS 4.1.1 cc rejects this.  */
+  char const *const *ccp;
+  char **p;
 ***************
 *** 2538,2544 ****
   
@@ -1104,11 +1595,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     ac_cv_c_const=yes
   else
---- 2549,2555 ----
+--- 2628,2634 ----
   
   ; return 0; }
   EOF
-! if { (eval echo configure:2553: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+! if { (eval echo configure:2632: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
     rm -rf conftest*
     ac_cv_c_const=yes
   else
@@ -1121,11 +1612,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   set dummy ${MAKE-make}; ac_make=`echo "$2" | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_prog_make_${ac_make}_set'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 2571,2577 ----
+--- 2650,2656 ----
   
   
   echo $ac_n "checking whether ${MAKE-make} sets \${MAKE}""... $ac_c" 1>&6
-! echo "configure:2575: checking whether ${MAKE-make} sets \${MAKE}" >&5
+! echo "configure:2654: checking whether ${MAKE-make} sets \${MAKE}" >&5
   set dummy ${MAKE-make}; ac_make=`echo "$2" | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_prog_make_${ac_make}_set'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
@@ -1138,32 +1629,33 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   if eval "test \"`echo '$''{'ac_cv_sys_long_file_names'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
---- 2599,2605 ----
+--- 2678,2684 ----
   
   
   echo $ac_n "checking for long file names""... $ac_c" 1>&6
-! echo "configure:2603: checking for long file names" >&5
+! echo "configure:2682: checking for long file names" >&5
   if eval "test \"`echo '$''{'ac_cv_sys_long_file_names'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
 ***************
 *** 2632,2637 ****
---- 2643,2770 ----
+--- 2722,2850 ----
   fi
   
   
 + # Extract the first word of "perl", so it can be a program name with args.
 + set dummy perl; ac_word=$2
 + echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
-+ echo "configure:2650: checking for $ac_word" >&5
++ echo "configure:2729: checking for $ac_word" >&5
 + if eval "test \"`echo '$''{'ac_cv_prog_PERL'+set}'`\" = set"; then
 +   echo $ac_n "(cached) $ac_c" 1>&6
 + else
 +   if test -n "$PERL"; then
 +   ac_cv_prog_PERL="$PERL" # Let the user override the test.
 + else
-+   IFS="${IFS= 	}"; ac_save_ifs="$IFS"; IFS="${IFS}:"
-+   for ac_dir in $PATH; do
++   IFS="${IFS= 	}"; ac_save_ifs="$IFS"; IFS=":"
++   ac_dummy="$PATH"
++   for ac_dir in $ac_dummy; do
 +     test -z "$ac_dir" && ac_dir=.
 +     if test -f $ac_dir/$ac_word; then
 +       ac_cv_prog_PERL="perl"
@@ -1182,14 +1674,14 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
 + 
 + if test -n "$PERL"; then
 +   echo $ac_n "checking whether ${PERL-perl} works and knows its version number""... $ac_c" 1>&6
-+ echo "configure:2677: checking whether ${PERL-perl} works and knows its version number" >&5
++ echo "configure:2757: checking whether ${PERL-perl} works and knows its version number" >&5
 + if eval "test \"`echo '$''{'ac_cv_prog_perl_version'+set}'`\" = set"; then
 +   echo $ac_n "(cached) $ac_c" 1>&6
 + else
 +   ac_cv_prog_perl_version=no
 + # Make perl print its version number.
 + ac_l_bracket="[" ac_r_bracket="]"  # trying to outsmart Autoconf here.
-+ if { ac_try='${PERL-perl} -e "print \$$ac_r_bracket" > conftest'; { (eval echo configure:2684: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }; }; then
++ if { ac_try='${PERL-perl} -e "print \$$ac_r_bracket" > conftest'; { (eval echo configure:2764: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }; }; then
 +   ac_cv_prog_perl_version=`cat conftest`
 + fi
 + rm -f conftest
@@ -1207,7 +1699,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
 +     ( test -n "$perl_version" && \
 + 	${PERL} -e 'use 5.005;' 2>/dev/null ); then
 +   echo $ac_n "checking for embeddable Perl""... $ac_c" 1>&6
-+ echo "configure:2702: checking for embeddable Perl" >&5
++ echo "configure:2782: checking for embeddable Perl" >&5
 + if test "x$enable_perl" = xno; then
 +   # The user explicitly disabled Perl.
 +   ac_embed_perl=disabled
@@ -1222,7 +1714,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
 +     ac_save_LIBS="$LIBS"
 +     LIBS="$PERL_LDOPTS"
 +     cat > conftest.$ac_ext <<EOF
-+ #line 2717 "configure"
++ #line 2797 "configure"
 + #include "confdefs.h"
 + #define main bad2proto
 + #include <EXTERN.h>
@@ -1232,11 +1724,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
 + PerlInterpreter *i = perl_alloc()
 + ; return 0; }
 + EOF
-+ if { (eval echo configure:2727: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
++ if { (eval echo configure:2807: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
 +   rm -rf conftest*
 +         ac_cv_embed_perl="ac_embed_perl=yes \
-+ 			 PERL_CCOPTS=\"$PERL_CCOPTS\" \
-+ 			 PERL_LDOPTS=\"$PERL_LDOPTS\""
++ 			 PERL_CCOPTS='$PERL_CCOPTS' \
++ 			 PERL_LDOPTS='$PERL_LDOPTS'"
 + else
 +   echo "configure: failed program was:" >&5
 +   cat conftest.$ac_ext >&5
@@ -1258,6 +1750,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
 + #define EMBED_PERL 1
 + EOF
 + 
++     maybe_perl=perl
 +     if ${PERL} -MConfig -e 'exit ($Config{usemymalloc} eq "y" ? 0 : 1)';
 +     then
 +       perl_malloc=yes
@@ -1268,11 +1761,10 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
 +     else
 +       perl_malloc=no
 +     fi
++   else
++     maybe_perl=
 +   fi
 + fi
-+ 
-+ 
-+ 
 + 
   #### Choose a window system.
   
@@ -1286,16 +1778,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   # Check whether --with-x or --without-x was given.
   if test "${with_x+set}" = set; then
---- 2772,2778 ----
+--- 2852,2858 ----
   # Uses ac_ vars as temps to allow command line to override cache and checks.
   # --without-x overrides everything else, but does not touch the cache.
   echo $ac_n "checking for X""... $ac_c" 1>&6
-! echo "configure:2776: checking for X" >&5
+! echo "configure:2856: checking for X" >&5
   
   # Check whether --with-x or --without-x was given.
   if test "${with_x+set}" = set; then
 ***************
-*** 2701,2712 ****
+*** 2701,2713 ****
   
     # First, try using that file with no special directory specified.
   cat > conftest.$ac_ext <<EOF
@@ -1305,22 +1797,24 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
 ! { (eval echo configure:2710: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! ac_err=`grep -v '^ *+' conftest.out`
   if test -z "$ac_err"; then
     rm -rf conftest*
---- 2834,2845 ----
+    # We can compile using X headers with no special include directory.
+--- 2914,2926 ----
   
     # First, try using that file with no special directory specified.
   cat > conftest.$ac_ext <<EOF
-! #line 2838 "configure"
+! #line 2918 "configure"
   #include "confdefs.h"
   #include <$x_direct_test_include>
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-! { (eval echo configure:2843: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! { (eval echo configure:2923: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+! ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
   if test -z "$ac_err"; then
     rm -rf conftest*
+    # We can compile using X headers with no special include directory.
 ***************
 *** 2775,2788 ****
     ac_save_LIBS="$LIBS"
@@ -1337,18 +1831,18 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     LIBS="$ac_save_LIBS"
   # We can link X programs with no special library path.
---- 2908,2921 ----
+--- 2988,3001 ----
     ac_save_LIBS="$LIBS"
     LIBS="-l$x_direct_test_library $LIBS"
   cat > conftest.$ac_ext <<EOF
-! #line 2912 "configure"
+! #line 2992 "configure"
   #include "confdefs.h"
   
   int main() {
   ${x_direct_test_function}()
   ; return 0; }
   EOF
-! if { (eval echo configure:2919: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:2999: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     LIBS="$ac_save_LIBS"
   # We can link X programs with no special library path.
@@ -1361,11 +1855,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
    - which libraries the lib-src programs will want, and
    - whether the GNU malloc routines are usable" >&5
   
---- 3089,3095 ----
+--- 3169,3175 ----
   echo "checking the machine- and system-dependent files to find out
    - which libraries the lib-src programs will want, and
    - whether the GNU malloc routines are usable" 1>&6
-! echo "configure:3093: checking the machine- and system-dependent files to find out
+! echo "configure:3173: checking the machine- and system-dependent files to find out
    - which libraries the lib-src programs will want, and
    - whether the GNU malloc routines are usable" >&5
   
@@ -1384,7 +1878,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* System header to define __stub macros and hopefully few prototypes,
       which can conflict with char malloc_get_state(); below.  */
---- 3218,3238 ----
+--- 3298,3318 ----
   # Assume not, until told otherwise.
   GNU_MALLOC=yes
   doug_lea_malloc=yes
@@ -1397,12 +1891,12 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
 + fi
 + 
   echo $ac_n "checking for malloc_get_state""... $ac_c" 1>&6
-! echo "configure:3231: checking for malloc_get_state" >&5
+! echo "configure:3311: checking for malloc_get_state" >&5
   if eval "test \"`echo '$''{'ac_cv_func_malloc_get_state'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 3236 "configure"
+! #line 3316 "configure"
   #include "confdefs.h"
   /* System header to define __stub macros and hopefully few prototypes,
       which can conflict with char malloc_get_state(); below.  */
@@ -1415,11 +1909,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_func_malloc_get_state=yes"
   else
---- 3255,3261 ----
+--- 3335,3341 ----
   
   ; return 0; }
   EOF
-! if { (eval echo configure:3259: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:3339: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_func_malloc_get_state=yes"
   else
@@ -1437,16 +1931,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* System header to define __stub macros and hopefully few prototypes,
       which can conflict with char malloc_set_state(); below.  */
---- 3276,3287 ----
+--- 3356,3367 ----
   fi
   
   echo $ac_n "checking for malloc_set_state""... $ac_c" 1>&6
-! echo "configure:3280: checking for malloc_set_state" >&5
+! echo "configure:3360: checking for malloc_set_state" >&5
   if eval "test \"`echo '$''{'ac_cv_func_malloc_set_state'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 3285 "configure"
+! #line 3365 "configure"
   #include "confdefs.h"
   /* System header to define __stub macros and hopefully few prototypes,
       which can conflict with char malloc_set_state(); below.  */
@@ -1459,11 +1953,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_func_malloc_set_state=yes"
   else
---- 3304,3310 ----
+--- 3384,3390 ----
   
   ; return 0; }
   EOF
-! if { (eval echo configure:3308: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:3388: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_func_malloc_set_state=yes"
   else
@@ -1488,23 +1982,23 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     emacs_cv_var___after_morecore_hook=yes
   else
---- 3325,3343 ----
+--- 3405,3423 ----
   fi
   
   echo $ac_n "checking whether __after_morecore_hook exists""... $ac_c" 1>&6
-! echo "configure:3329: checking whether __after_morecore_hook exists" >&5
+! echo "configure:3409: checking whether __after_morecore_hook exists" >&5
   if eval "test \"`echo '$''{'emacs_cv_var___after_morecore_hook'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 3334 "configure"
+! #line 3414 "configure"
   #include "confdefs.h"
   extern void (* __after_morecore_hook)();
   int main() {
   __after_morecore_hook = 0
   ; return 0; }
   EOF
-! if { (eval echo configure:3341: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:3421: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     emacs_cv_var___after_morecore_hook=yes
   else
@@ -1517,11 +2011,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ac_lib_var=`echo dnet'_'dnet_ntoa | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 3387,3393 ----
+--- 3467,3473 ----
   LIBS="$libsrc_libs $LIBS"
   
   echo $ac_n "checking for dnet_ntoa in -ldnet""... $ac_c" 1>&6
-! echo "configure:3391: checking for dnet_ntoa in -ldnet" >&5
+! echo "configure:3471: checking for dnet_ntoa in -ldnet" >&5
   ac_lib_var=`echo dnet'_'dnet_ntoa | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
@@ -1534,11 +2028,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
---- 3395,3401 ----
+--- 3475,3481 ----
     ac_save_LIBS="$LIBS"
   LIBS="-ldnet  $LIBS"
   cat > conftest.$ac_ext <<EOF
-! #line 3399 "configure"
+! #line 3479 "configure"
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
@@ -1551,11 +2045,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
---- 3406,3412 ----
+--- 3486,3492 ----
   dnet_ntoa()
   ; return 0; }
   EOF
-! if { (eval echo configure:3410: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:3490: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
@@ -1568,11 +2062,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ac_lib_var=`echo Xbsd'_'main | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 3435,3441 ----
+--- 3515,3521 ----
   
   
   echo $ac_n "checking for main in -lXbsd""... $ac_c" 1>&6
-! echo "configure:3439: checking for main in -lXbsd" >&5
+! echo "configure:3519: checking for main in -lXbsd" >&5
   ac_lib_var=`echo Xbsd'_'main | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
@@ -1592,18 +2086,18 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
---- 3443,3456 ----
+--- 3523,3536 ----
     ac_save_LIBS="$LIBS"
   LIBS="-lXbsd  $LIBS"
   cat > conftest.$ac_ext <<EOF
-! #line 3447 "configure"
+! #line 3527 "configure"
   #include "confdefs.h"
   
   int main() {
   main()
   ; return 0; }
   EOF
-! if { (eval echo configure:3454: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:3534: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
@@ -1616,11 +2110,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ac_lib_var=`echo pthreads'_'cma_open | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 3472,3478 ----
+--- 3552,3558 ----
   
   
   echo $ac_n "checking for cma_open in -lpthreads""... $ac_c" 1>&6
-! echo "configure:3476: checking for cma_open in -lpthreads" >&5
+! echo "configure:3556: checking for cma_open in -lpthreads" >&5
   ac_lib_var=`echo pthreads'_'cma_open | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
@@ -1633,11 +2127,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
---- 3480,3486 ----
+--- 3560,3566 ----
     ac_save_LIBS="$LIBS"
   LIBS="-lpthreads  $LIBS"
   cat > conftest.$ac_ext <<EOF
-! #line 3484 "configure"
+! #line 3564 "configure"
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
@@ -1650,11 +2144,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
---- 3491,3497 ----
+--- 3571,3577 ----
   cma_open()
   ; return 0; }
   EOF
-! if { (eval echo configure:3495: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:3575: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
@@ -1667,11 +2161,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   if test -d /usr/X386/include; then
     HAVE_XFREE386=yes
     : ${C_SWITCH_X_SITE="-I/usr/X386/include"}
---- 3520,3526 ----
+--- 3600,3606 ----
   
   
   echo $ac_n "checking for XFree86""... $ac_c" 1>&6
-! echo "configure:3524: checking for XFree86" >&5
+! echo "configure:3604: checking for XFree86" >&5
   if test -d /usr/X386/include; then
     HAVE_XFREE386=yes
     : ${C_SWITCH_X_SITE="-I/usr/X386/include"}
@@ -1693,20 +2187,20 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     xlinux_first_failure=no
   else
---- 3549,3564 ----
+--- 3629,3644 ----
   
     if test "${opsys}" = "gnu-linux"; then
       echo $ac_n "checking whether X on GNU/Linux needs -b to link""... $ac_c" 1>&6
-! echo "configure:3553: checking whether X on GNU/Linux needs -b to link" >&5
+! echo "configure:3633: checking whether X on GNU/Linux needs -b to link" >&5
       cat > conftest.$ac_ext <<EOF
-! #line 3555 "configure"
+! #line 3635 "configure"
   #include "confdefs.h"
   
   int main() {
   XOpenDisplay ("foo");
   ; return 0; }
   EOF
-! if { (eval echo configure:3562: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:3642: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     xlinux_first_failure=no
   else
@@ -1726,18 +2220,18 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     xlinux_second_failure=no
   else
---- 3578,3591 ----
+--- 3658,3671 ----
         CPPFLAGS="$CPPFLAGS -b i486-linuxaout"
         LIBS="$LIBS -b i486-linuxaout"
         cat > conftest.$ac_ext <<EOF
-! #line 3582 "configure"
+! #line 3662 "configure"
   #include "confdefs.h"
   
   int main() {
   XOpenDisplay ("foo");
   ; return 0; }
   EOF
-! if { (eval echo configure:3589: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:3669: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     xlinux_second_failure=no
   else
@@ -1755,16 +2249,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* System header to define __stub macros and hopefully few prototypes,
       which can conflict with char $ac_func(); below.  */
---- 3615,3626 ----
+--- 3695,3706 ----
   XScreenNumberOfScreen XSetWMProtocols
   do
   echo $ac_n "checking for $ac_func""... $ac_c" 1>&6
-! echo "configure:3619: checking for $ac_func" >&5
+! echo "configure:3699: checking for $ac_func" >&5
   if eval "test \"`echo '$''{'ac_cv_func_$ac_func'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 3624 "configure"
+! #line 3704 "configure"
   #include "confdefs.h"
   /* System header to define __stub macros and hopefully few prototypes,
       which can conflict with char $ac_func(); below.  */
@@ -1777,11 +2271,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_func_$ac_func=yes"
   else
---- 3643,3649 ----
+--- 3723,3729 ----
   
   ; return 0; }
   EOF
-! if { (eval echo configure:3647: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:3727: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_func_$ac_func=yes"
   else
@@ -1799,16 +2293,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #include <X11/Xlib.h>
   int main() {
---- 3671,3682 ----
+--- 3751,3762 ----
   
   if test "${window_system}" = "x11"; then
     echo $ac_n "checking X11 version 6""... $ac_c" 1>&6
-! echo "configure:3675: checking X11 version 6" >&5
+! echo "configure:3755: checking X11 version 6" >&5
     if eval "test \"`echo '$''{'emacs_cv_x11_version_6'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 3680 "configure"
+! #line 3760 "configure"
   #include "confdefs.h"
   #include <X11/Xlib.h>
   int main() {
@@ -1821,11 +2315,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     emacs_cv_x11_version_6=yes
   else
---- 3686,3692 ----
+--- 3766,3772 ----
   
   ; return 0; }
   EOF
-! if { (eval echo configure:3690: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:3770: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     emacs_cv_x11_version_6=yes
   else
@@ -1843,16 +2337,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #include <X11/Xlib.h>
   int main() {
---- 3711,3722 ----
+--- 3791,3802 ----
   
   if test "${window_system}" = "x11"; then
     echo $ac_n "checking X11 version 5""... $ac_c" 1>&6
-! echo "configure:3715: checking X11 version 5" >&5
+! echo "configure:3795: checking X11 version 5" >&5
     if eval "test \"`echo '$''{'emacs_cv_x11_version_5'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 3720 "configure"
+! #line 3800 "configure"
   #include "confdefs.h"
   #include <X11/Xlib.h>
   int main() {
@@ -1865,11 +2359,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     emacs_cv_x11_version_5=yes
   else
---- 3726,3732 ----
+--- 3806,3812 ----
   
   ; return 0; }
   EOF
-! if { (eval echo configure:3730: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:3810: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     emacs_cv_x11_version_5=yes
   else
@@ -1887,16 +2381,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   
   #include <X11/Intrinsic.h>
---- 3754,3765 ----
+--- 3834,3845 ----
   if test x"${USE_X_TOOLKIT}" = xmaybe; then
     if test x"${HAVE_X11R5}" = xyes; then
       echo $ac_n "checking X11 version 5 with Xaw""... $ac_c" 1>&6
-! echo "configure:3758: checking X11 version 5 with Xaw" >&5
+! echo "configure:3838: checking X11 version 5 with Xaw" >&5
       if eval "test \"`echo '$''{'emacs_cv_x11_version_5_with_xaw'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 3763 "configure"
+! #line 3843 "configure"
   #include "confdefs.h"
   
   #include <X11/Intrinsic.h>
@@ -1909,11 +2403,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     emacs_cv_x11_version_5_with_xaw=yes
   else
---- 3768,3774 ----
+--- 3848,3854 ----
   
   ; return 0; }
   EOF
-! if { (eval echo configure:3772: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:3852: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     emacs_cv_x11_version_5_with_xaw=yes
   else
@@ -1931,16 +2425,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #include <X11/Intrinsic.h>
   int main() {
---- 3796,3807 ----
+--- 3876,3887 ----
   
   if test "${USE_X_TOOLKIT}" != "none"; then
     echo $ac_n "checking X11 toolkit version""... $ac_c" 1>&6
-! echo "configure:3800: checking X11 toolkit version" >&5
+! echo "configure:3880: checking X11 toolkit version" >&5
     if eval "test \"`echo '$''{'emacs_cv_x11_toolkit_version_6'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 3805 "configure"
+! #line 3885 "configure"
   #include "confdefs.h"
   #include <X11/Intrinsic.h>
   int main() {
@@ -1953,11 +2447,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     emacs_cv_x11_toolkit_version_6=yes
   else
---- 3811,3817 ----
+--- 3891,3897 ----
   
   ; return 0; }
   EOF
-! if { (eval echo configure:3815: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:3895: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     emacs_cv_x11_toolkit_version_6=yes
   else
@@ -1970,11 +2464,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ac_lib_var=`echo Xmu'_'XmuConvertStandardSelection | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 3841,3847 ----
+--- 3921,3927 ----
       LIBS="-lXt $LIBS"
     fi
     echo $ac_n "checking for XmuConvertStandardSelection in -lXmu""... $ac_c" 1>&6
-! echo "configure:3845: checking for XmuConvertStandardSelection in -lXmu" >&5
+! echo "configure:3925: checking for XmuConvertStandardSelection in -lXmu" >&5
   ac_lib_var=`echo Xmu'_'XmuConvertStandardSelection | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
@@ -1987,11 +2481,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
---- 3849,3855 ----
+--- 3929,3935 ----
     ac_save_LIBS="$LIBS"
   LIBS="-lXmu  $LIBS"
   cat > conftest.$ac_ext <<EOF
-! #line 3853 "configure"
+! #line 3933 "configure"
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
@@ -2004,11 +2498,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
---- 3860,3866 ----
+--- 3940,3946 ----
   XmuConvertStandardSelection()
   ; return 0; }
   EOF
-! if { (eval echo configure:3864: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:3944: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
@@ -2026,16 +2520,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #include <Xm/Xm.h>
   int main() {
---- 3892,3903 ----
+--- 3972,3983 ----
   
   if test "${USE_X_TOOLKIT}" = "MOTIF"; then
     echo $ac_n "checking for Motif version 2.1""... $ac_c" 1>&6
-! echo "configure:3896: checking for Motif version 2.1" >&5
+! echo "configure:3976: checking for Motif version 2.1" >&5
   if eval "test \"`echo '$''{'emacs_cv_motif_version_2_1'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 3901 "configure"
+! #line 3981 "configure"
   #include "confdefs.h"
   #include <Xm/Xm.h>
   int main() {
@@ -2048,11 +2542,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     emacs_cv_motif_version_2_1=yes
   else
---- 3908,3914 ----
+--- 3988,3994 ----
   #endif
   ; return 0; }
   EOF
-! if { (eval echo configure:3912: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+! if { (eval echo configure:3992: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
     rm -rf conftest*
     emacs_cv_motif_version_2_1=yes
   else
@@ -2077,23 +2571,23 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     emacs_cv_netdb_declares_h_errno=yes
   else
---- 3932,3950 ----
+--- 4012,4030 ----
   
   # If netdb.h doesn't declare h_errno, we must declare it by hand.
   echo $ac_n "checking whether netdb declares h_errno""... $ac_c" 1>&6
-! echo "configure:3936: checking whether netdb declares h_errno" >&5
+! echo "configure:4016: checking whether netdb declares h_errno" >&5
   if eval "test \"`echo '$''{'emacs_cv_netdb_declares_h_errno'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 3941 "configure"
+! #line 4021 "configure"
   #include "confdefs.h"
   #include <netdb.h>
   int main() {
   return h_errno;
   ; return 0; }
   EOF
-! if { (eval echo configure:3948: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:4028: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     emacs_cv_netdb_declares_h_errno=yes
   else
@@ -2111,35 +2605,35 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #include <alloca.h>
   int main() {
-  char *p = alloca(2 * sizeof(int));
+! char *p = alloca(2 * sizeof(int));
   ; return 0; }
   EOF
 ! if { (eval echo configure:3842: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
     rm -rf conftest*
     ac_cv_header_alloca_h=yes
   else
---- 3967,3985 ----
+--- 4047,4065 ----
   # The Ultrix 4.2 mips builtin alloca declared by alloca.h only works
   # for constant arguments.  Useless!
   echo $ac_n "checking for working alloca.h""... $ac_c" 1>&6
-! echo "configure:3971: checking for working alloca.h" >&5
+! echo "configure:4051: checking for working alloca.h" >&5
   if eval "test \"`echo '$''{'ac_cv_header_alloca_h'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 3976 "configure"
+! #line 4056 "configure"
   #include "confdefs.h"
   #include <alloca.h>
   int main() {
-  char *p = alloca(2 * sizeof(int));
+! void *p = alloca(2 * sizeof(int));
   ; return 0; }
   EOF
-! if { (eval echo configure:3983: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:4063: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     ac_cv_header_alloca_h=yes
   else
 ***************
-*** 3859,3870 ****
+*** 3859,3883 ****
   fi
   
   echo $ac_n "checking for alloca""... $ac_c" 1>&6
@@ -2152,19 +2646,50 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   
   #ifdef __GNUC__
---- 4000,4011 ----
+  # define alloca __builtin_alloca
+  #else
+! # if HAVE_ALLOCA_H
+! #  include <alloca.h>
+  # else
+! #  ifdef _AIX
+!  #pragma alloca
+  #  else
+! #   ifndef alloca /* predefined by HP cc +Olibcalls */
+  char *alloca ();
+  #   endif
+  #  endif
+  # endif
+--- 4080,4109 ----
   fi
   
   echo $ac_n "checking for alloca""... $ac_c" 1>&6
-! echo "configure:4004: checking for alloca" >&5
+! echo "configure:4084: checking for alloca" >&5
   if eval "test \"`echo '$''{'ac_cv_func_alloca_works'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 4009 "configure"
+! #line 4089 "configure"
   #include "confdefs.h"
   
   #ifdef __GNUC__
+  # define alloca __builtin_alloca
+  #else
+! # ifdef _MSC_VER
+! #  include <malloc.h>
+! #  define alloca _alloca
+  # else
+! #  if HAVE_ALLOCA_H
+! #   include <alloca.h>
+  #  else
+! #   ifdef _AIX
+!  #pragma alloca
+! #   else
+! #    ifndef alloca /* predefined by HP cc +Olibcalls */
+  char *alloca ();
++ #    endif
+  #   endif
+  #  endif
+  # endif
 ***************
 *** 3887,3893 ****
   char *p = (char *) alloca(1);
@@ -2174,16 +2699,23 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     ac_cv_func_alloca_works=yes
   else
---- 4028,4034 ----
+--- 4113,4119 ----
   char *p = (char *) alloca(1);
   ; return 0; }
   EOF
-! if { (eval echo configure:4032: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:4117: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     ac_cv_func_alloca_works=yes
   else
 ***************
-*** 3919,3930 ****
+*** 3912,3930 ****
+    # that cause trouble.  Some versions do not even contain alloca or
+    # contain a buggy version.  If you still want to use their alloca,
+    # use ar to extract alloca.o from them instead of compiling alloca.c.
+!   ALLOCA=alloca.o
+    cat >> confdefs.h <<\EOF
+  #define C_ALLOCA 1
+  EOF
   
   
   echo $ac_n "checking whether alloca needs Cray hooks""... $ac_c" 1>&6
@@ -2196,16 +2728,23 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #if defined(CRAY) && ! defined(CRAY2)
   webecray
---- 4060,4071 ----
+--- 4138,4156 ----
+    # that cause trouble.  Some versions do not even contain alloca or
+    # contain a buggy version.  If you still want to use their alloca,
+    # use ar to extract alloca.o from them instead of compiling alloca.c.
+!   ALLOCA=alloca.${ac_objext}
+    cat >> confdefs.h <<\EOF
+  #define C_ALLOCA 1
+  EOF
   
   
   echo $ac_n "checking whether alloca needs Cray hooks""... $ac_c" 1>&6
-! echo "configure:4064: checking whether alloca needs Cray hooks" >&5
+! echo "configure:4149: checking whether alloca needs Cray hooks" >&5
   if eval "test \"`echo '$''{'ac_cv_os_cray'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 4069 "configure"
+! #line 4154 "configure"
   #include "confdefs.h"
   #if defined(CRAY) && ! defined(CRAY2)
   webecray
@@ -2223,16 +2762,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* System header to define __stub macros and hopefully few prototypes,
       which can conflict with char $ac_func(); below.  */
---- 4090,4101 ----
+--- 4175,4186 ----
   if test $ac_cv_os_cray = yes; then
   for ac_func in _getb67 GETB67 getb67; do
     echo $ac_n "checking for $ac_func""... $ac_c" 1>&6
-! echo "configure:4094: checking for $ac_func" >&5
+! echo "configure:4179: checking for $ac_func" >&5
   if eval "test \"`echo '$''{'ac_cv_func_$ac_func'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 4099 "configure"
+! #line 4184 "configure"
   #include "confdefs.h"
   /* System header to define __stub macros and hopefully few prototypes,
       which can conflict with char $ac_func(); below.  */
@@ -2245,11 +2784,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_func_$ac_func=yes"
   else
---- 4118,4124 ----
+--- 4203,4209 ----
   
   ; return 0; }
   EOF
-! if { (eval echo configure:4122: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:4207: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_func_$ac_func=yes"
   else
@@ -2262,11 +2801,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   if eval "test \"`echo '$''{'ac_cv_c_stack_direction'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
---- 4145,4151 ----
+--- 4230,4236 ----
   fi
   
   echo $ac_n "checking stack direction for C alloca""... $ac_c" 1>&6
-! echo "configure:4149: checking stack direction for C alloca" >&5
+! echo "configure:4234: checking stack direction for C alloca" >&5
   if eval "test \"`echo '$''{'ac_cv_c_stack_direction'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
@@ -2279,11 +2818,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   find_stack_direction ()
   {
---- 4153,4159 ----
+--- 4238,4244 ----
     ac_cv_c_stack_direction=0
   else
     cat > conftest.$ac_ext <<EOF
-! #line 4157 "configure"
+! #line 4242 "configure"
   #include "confdefs.h"
   find_stack_direction ()
   {
@@ -2296,11 +2835,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   then
     ac_cv_c_stack_direction=1
   else
---- 4172,4178 ----
+--- 4257,4263 ----
     exit (find_stack_direction() < 0);
   }
   EOF
-! if { (eval echo configure:4176: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest && (./conftest; exit) 2>/dev/null
+! if { (eval echo configure:4261: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext} && (./conftest; exit) 2>/dev/null
   then
     ac_cv_c_stack_direction=1
   else
@@ -2313,11 +2852,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ac_lib_var=`echo m'_'sqrt | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 4197,4203 ----
+--- 4282,4288 ----
   # fmod, logb, and frexp are found in -lm on most systems.
   # On HPUX 9.01, -lm does not contain logb, so check for sqrt.
   echo $ac_n "checking for sqrt in -lm""... $ac_c" 1>&6
-! echo "configure:4201: checking for sqrt in -lm" >&5
+! echo "configure:4286: checking for sqrt in -lm" >&5
   ac_lib_var=`echo m'_'sqrt | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
@@ -2330,11 +2869,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
---- 4205,4211 ----
+--- 4290,4296 ----
     ac_save_LIBS="$LIBS"
   LIBS="-lm  $LIBS"
   cat > conftest.$ac_ext <<EOF
-! #line 4209 "configure"
+! #line 4294 "configure"
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
@@ -2347,11 +2886,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
---- 4216,4222 ----
+--- 4301,4307 ----
   sqrt()
   ; return 0; }
   EOF
-! if { (eval echo configure:4220: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:4305: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
@@ -2364,11 +2903,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ac_lib_var=`echo mail'_'maillock | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 4246,4252 ----
+--- 4331,4337 ----
   
   # Check for mail-locking functions in a "mail" library
   echo $ac_n "checking for maillock in -lmail""... $ac_c" 1>&6
-! echo "configure:4250: checking for maillock in -lmail" >&5
+! echo "configure:4335: checking for maillock in -lmail" >&5
   ac_lib_var=`echo mail'_'maillock | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
@@ -2381,11 +2920,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
---- 4254,4260 ----
+--- 4339,4345 ----
     ac_save_LIBS="$LIBS"
   LIBS="-lmail  $LIBS"
   cat > conftest.$ac_ext <<EOF
-! #line 4258 "configure"
+! #line 4343 "configure"
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
@@ -2398,11 +2937,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
---- 4265,4271 ----
+--- 4350,4356 ----
   maillock()
   ; return 0; }
   EOF
-! if { (eval echo configure:4269: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:4354: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
@@ -2420,16 +2959,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* System header to define __stub macros and hopefully few prototypes,
       which can conflict with char $ac_func(); below.  */
---- 4287,4298 ----
+--- 4372,4383 ----
   	     for ac_func in touchlock
   do
   echo $ac_n "checking for $ac_func""... $ac_c" 1>&6
-! echo "configure:4291: checking for $ac_func" >&5
+! echo "configure:4376: checking for $ac_func" >&5
   if eval "test \"`echo '$''{'ac_cv_func_$ac_func'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 4296 "configure"
+! #line 4381 "configure"
   #include "confdefs.h"
   /* System header to define __stub macros and hopefully few prototypes,
       which can conflict with char $ac_func(); below.  */
@@ -2442,16 +2981,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_func_$ac_func=yes"
   else
---- 4315,4321 ----
+--- 4400,4406 ----
   
   ; return 0; }
   EOF
-! if { (eval echo configure:4319: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:4404: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_func_$ac_func=yes"
   else
 ***************
-*** 4202,4218 ****
+*** 4202,4219 ****
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
@@ -2466,27 +3005,29 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
 ! { (eval echo configure:4216: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! ac_err=`grep -v '^ *+' conftest.out`
   if test -z "$ac_err"; then
     rm -rf conftest*
---- 4343,4359 ----
+    eval "ac_cv_header_$ac_safe=yes"
+--- 4428,4445 ----
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-! echo "configure:4347: checking for $ac_hdr" >&5
+! echo "configure:4432: checking for $ac_hdr" >&5
   if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 4352 "configure"
+! #line 4437 "configure"
   #include "confdefs.h"
   #include <$ac_hdr>
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-! { (eval echo configure:4357: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! { (eval echo configure:4442: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+! ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
   if test -z "$ac_err"; then
     rm -rf conftest*
+    eval "ac_cv_header_$ac_safe=yes"
 ***************
 *** 4250,4261 ****
   utimes setrlimit setpgid getcwd shutdown strftime
@@ -2501,16 +3042,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* System header to define __stub macros and hopefully few prototypes,
       which can conflict with char $ac_func(); below.  */
---- 4391,4402 ----
+--- 4476,4487 ----
   utimes setrlimit setpgid getcwd shutdown strftime
   do
   echo $ac_n "checking for $ac_func""... $ac_c" 1>&6
-! echo "configure:4395: checking for $ac_func" >&5
+! echo "configure:4480: checking for $ac_func" >&5
   if eval "test \"`echo '$''{'ac_cv_func_$ac_func'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 4400 "configure"
+! #line 4485 "configure"
   #include "confdefs.h"
   /* System header to define __stub macros and hopefully few prototypes,
       which can conflict with char $ac_func(); below.  */
@@ -2523,11 +3064,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_func_$ac_func=yes"
   else
---- 4419,4425 ----
+--- 4504,4510 ----
   
   ; return 0; }
   EOF
-! if { (eval echo configure:4423: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:4508: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_func_$ac_func=yes"
   else
@@ -2540,11 +3081,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ac_lib_var=`echo ncurses'_'tparm | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 4449,4455 ----
+--- 4534,4540 ----
   # It's better to believe a function is not available
   # than to expect to find it in ncurses.
   echo $ac_n "checking for tparm in -lncurses""... $ac_c" 1>&6
-! echo "configure:4453: checking for tparm in -lncurses" >&5
+! echo "configure:4538: checking for tparm in -lncurses" >&5
   ac_lib_var=`echo ncurses'_'tparm | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
@@ -2557,11 +3098,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
---- 4457,4463 ----
+--- 4542,4548 ----
     ac_save_LIBS="$LIBS"
   LIBS="-lncurses  $LIBS"
   cat > conftest.$ac_ext <<EOF
-! #line 4461 "configure"
+! #line 4546 "configure"
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
@@ -2574,11 +3115,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
---- 4468,4474 ----
+--- 4553,4559 ----
   tparm()
   ; return 0; }
   EOF
-! if { (eval echo configure:4472: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:4557: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
@@ -2591,11 +3132,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ac_lib_var=`echo com_err'_'com_err | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 4499,4505 ----
+--- 4584,4590 ----
   # These tell us which Kerberos-related libraries to use.
   if test "${with_kerberos+set}" = set; then
     echo $ac_n "checking for com_err in -lcom_err""... $ac_c" 1>&6
-! echo "configure:4503: checking for com_err in -lcom_err" >&5
+! echo "configure:4588: checking for com_err in -lcom_err" >&5
   ac_lib_var=`echo com_err'_'com_err | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
@@ -2608,11 +3149,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
---- 4507,4513 ----
+--- 4592,4598 ----
     ac_save_LIBS="$LIBS"
   LIBS="-lcom_err  $LIBS"
   cat > conftest.$ac_ext <<EOF
-! #line 4511 "configure"
+! #line 4596 "configure"
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
@@ -2625,11 +3166,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
---- 4518,4524 ----
+--- 4603,4609 ----
   com_err()
   ; return 0; }
   EOF
-! if { (eval echo configure:4522: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:4607: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
@@ -2642,11 +3183,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ac_lib_var=`echo crypto'_'mit_des_cbc_encrypt | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 4546,4552 ----
+--- 4631,4637 ----
   fi
   
     echo $ac_n "checking for mit_des_cbc_encrypt in -lcrypto""... $ac_c" 1>&6
-! echo "configure:4550: checking for mit_des_cbc_encrypt in -lcrypto" >&5
+! echo "configure:4635: checking for mit_des_cbc_encrypt in -lcrypto" >&5
   ac_lib_var=`echo crypto'_'mit_des_cbc_encrypt | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
@@ -2659,11 +3200,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
---- 4554,4560 ----
+--- 4639,4645 ----
     ac_save_LIBS="$LIBS"
   LIBS="-lcrypto  $LIBS"
   cat > conftest.$ac_ext <<EOF
-! #line 4558 "configure"
+! #line 4643 "configure"
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
@@ -2676,11 +3217,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
---- 4565,4571 ----
+--- 4650,4656 ----
   mit_des_cbc_encrypt()
   ; return 0; }
   EOF
-! if { (eval echo configure:4569: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:4654: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
@@ -2693,11 +3234,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ac_lib_var=`echo krb5'_'krb5_init_context | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 4593,4599 ----
+--- 4678,4684 ----
   fi
   
     echo $ac_n "checking for krb5_init_context in -lkrb5""... $ac_c" 1>&6
-! echo "configure:4597: checking for krb5_init_context in -lkrb5" >&5
+! echo "configure:4682: checking for krb5_init_context in -lkrb5" >&5
   ac_lib_var=`echo krb5'_'krb5_init_context | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
@@ -2710,11 +3251,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
---- 4601,4607 ----
+--- 4686,4692 ----
     ac_save_LIBS="$LIBS"
   LIBS="-lkrb5  $LIBS"
   cat > conftest.$ac_ext <<EOF
-! #line 4605 "configure"
+! #line 4690 "configure"
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
@@ -2727,11 +3268,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
---- 4612,4618 ----
+--- 4697,4703 ----
   krb5_init_context()
   ; return 0; }
   EOF
-! if { (eval echo configure:4616: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:4701: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
@@ -2744,11 +3285,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ac_lib_var=`echo gssapi_krb5'_'gss_init_sec_context | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 4642,4648 ----
+--- 4727,4733 ----
     if test "${with_kerberos5+set}" = set; then
       if test "${with_gssapi+set}" = set; then
         echo $ac_n "checking for gss_init_sec_context in -lgssapi_krb5""... $ac_c" 1>&6
-! echo "configure:4646: checking for gss_init_sec_context in -lgssapi_krb5" >&5
+! echo "configure:4731: checking for gss_init_sec_context in -lgssapi_krb5" >&5
   ac_lib_var=`echo gssapi_krb5'_'gss_init_sec_context | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
@@ -2761,11 +3302,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
---- 4650,4656 ----
+--- 4735,4741 ----
     ac_save_LIBS="$LIBS"
   LIBS="-lgssapi_krb5  $LIBS"
   cat > conftest.$ac_ext <<EOF
-! #line 4654 "configure"
+! #line 4739 "configure"
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
@@ -2778,11 +3319,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
---- 4661,4667 ----
+--- 4746,4752 ----
   gss_init_sec_context()
   ; return 0; }
   EOF
-! if { (eval echo configure:4665: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:4750: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
@@ -2795,11 +3336,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ac_lib_var=`echo des'_'des_cbc_encrypt | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 4691,4697 ----
+--- 4776,4782 ----
       fi
     else
       echo $ac_n "checking for des_cbc_encrypt in -ldes""... $ac_c" 1>&6
-! echo "configure:4695: checking for des_cbc_encrypt in -ldes" >&5
+! echo "configure:4780: checking for des_cbc_encrypt in -ldes" >&5
   ac_lib_var=`echo des'_'des_cbc_encrypt | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
@@ -2812,11 +3353,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
---- 4699,4705 ----
+--- 4784,4790 ----
     ac_save_LIBS="$LIBS"
   LIBS="-ldes  $LIBS"
   cat > conftest.$ac_ext <<EOF
-! #line 4703 "configure"
+! #line 4788 "configure"
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
@@ -2829,11 +3370,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
---- 4710,4716 ----
+--- 4795,4801 ----
   des_cbc_encrypt()
   ; return 0; }
   EOF
-! if { (eval echo configure:4714: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:4799: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
@@ -2846,11 +3387,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ac_lib_var=`echo des425'_'des_cbc_encrypt | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 4736,4742 ----
+--- 4821,4827 ----
   else
     echo "$ac_t""no" 1>&6
   echo $ac_n "checking for des_cbc_encrypt in -ldes425""... $ac_c" 1>&6
-! echo "configure:4740: checking for des_cbc_encrypt in -ldes425" >&5
+! echo "configure:4825: checking for des_cbc_encrypt in -ldes425" >&5
   ac_lib_var=`echo des425'_'des_cbc_encrypt | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
@@ -2863,11 +3404,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
---- 4744,4750 ----
+--- 4829,4835 ----
     ac_save_LIBS="$LIBS"
   LIBS="-ldes425  $LIBS"
   cat > conftest.$ac_ext <<EOF
-! #line 4748 "configure"
+! #line 4833 "configure"
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
@@ -2880,11 +3421,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
---- 4755,4761 ----
+--- 4840,4846 ----
   des_cbc_encrypt()
   ; return 0; }
   EOF
-! if { (eval echo configure:4759: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:4844: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
@@ -2897,11 +3438,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ac_lib_var=`echo krb'_'krb_get_cred | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 4785,4791 ----
+--- 4870,4876 ----
   fi
   
       echo $ac_n "checking for krb_get_cred in -lkrb""... $ac_c" 1>&6
-! echo "configure:4789: checking for krb_get_cred in -lkrb" >&5
+! echo "configure:4874: checking for krb_get_cred in -lkrb" >&5
   ac_lib_var=`echo krb'_'krb_get_cred | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
@@ -2914,11 +3455,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
---- 4793,4799 ----
+--- 4878,4884 ----
     ac_save_LIBS="$LIBS"
   LIBS="-lkrb  $LIBS"
   cat > conftest.$ac_ext <<EOF
-! #line 4797 "configure"
+! #line 4882 "configure"
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
@@ -2931,11 +3472,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
---- 4804,4810 ----
+--- 4889,4895 ----
   krb_get_cred()
   ; return 0; }
   EOF
-! if { (eval echo configure:4808: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:4893: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
@@ -2948,11 +3489,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ac_lib_var=`echo krb4'_'krb_get_cred | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 4830,4836 ----
+--- 4915,4921 ----
   else
     echo "$ac_t""no" 1>&6
   echo $ac_n "checking for krb_get_cred in -lkrb4""... $ac_c" 1>&6
-! echo "configure:4834: checking for krb_get_cred in -lkrb4" >&5
+! echo "configure:4919: checking for krb_get_cred in -lkrb4" >&5
   ac_lib_var=`echo krb4'_'krb_get_cred | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
@@ -2965,11 +3506,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
---- 4838,4844 ----
+--- 4923,4929 ----
     ac_save_LIBS="$LIBS"
   LIBS="-lkrb4  $LIBS"
   cat > conftest.$ac_ext <<EOF
-! #line 4842 "configure"
+! #line 4927 "configure"
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
@@ -2982,16 +3523,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
---- 4849,4855 ----
+--- 4934,4940 ----
   krb_get_cred()
   ; return 0; }
   EOF
-! if { (eval echo configure:4853: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:4938: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
 ***************
-*** 4744,4760 ****
+*** 4744,4761 ****
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
@@ -3006,29 +3547,31 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
 ! { (eval echo configure:4758: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! ac_err=`grep -v '^ *+' conftest.out`
   if test -z "$ac_err"; then
     rm -rf conftest*
---- 4885,4901 ----
+    eval "ac_cv_header_$ac_safe=yes"
+--- 4970,4987 ----
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-! echo "configure:4889: checking for $ac_hdr" >&5
+! echo "configure:4974: checking for $ac_hdr" >&5
   if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 4894 "configure"
+! #line 4979 "configure"
   #include "confdefs.h"
   #include <$ac_hdr>
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-! { (eval echo configure:4899: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! { (eval echo configure:4984: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+! ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
   if test -z "$ac_err"; then
     rm -rf conftest*
+    eval "ac_cv_header_$ac_safe=yes"
 ***************
-*** 4785,4801 ****
+*** 4785,4802 ****
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
@@ -3043,29 +3586,31 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
 ! { (eval echo configure:4799: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! ac_err=`grep -v '^ *+' conftest.out`
   if test -z "$ac_err"; then
     rm -rf conftest*
---- 4926,4942 ----
+    eval "ac_cv_header_$ac_safe=yes"
+--- 5011,5028 ----
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-! echo "configure:4930: checking for $ac_hdr" >&5
+! echo "configure:5015: checking for $ac_hdr" >&5
   if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 4935 "configure"
+! #line 5020 "configure"
   #include "confdefs.h"
   #include <$ac_hdr>
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-! { (eval echo configure:4940: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! { (eval echo configure:5025: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+! ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
   if test -z "$ac_err"; then
     rm -rf conftest*
+    eval "ac_cv_header_$ac_safe=yes"
 ***************
-*** 4822,4838 ****
+*** 4822,4839 ****
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
@@ -3080,29 +3625,31 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
 ! { (eval echo configure:4836: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! ac_err=`grep -v '^ *+' conftest.out`
   if test -z "$ac_err"; then
     rm -rf conftest*
---- 4963,4979 ----
+    eval "ac_cv_header_$ac_safe=yes"
+--- 5048,5065 ----
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-! echo "configure:4967: checking for $ac_hdr" >&5
+! echo "configure:5052: checking for $ac_hdr" >&5
   if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 4972 "configure"
+! #line 5057 "configure"
   #include "confdefs.h"
   #include <$ac_hdr>
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-! { (eval echo configure:4977: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! { (eval echo configure:5062: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+! ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
   if test -z "$ac_err"; then
     rm -rf conftest*
+    eval "ac_cv_header_$ac_safe=yes"
 ***************
-*** 4859,4875 ****
+*** 4859,4876 ****
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
@@ -3117,29 +3664,31 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
 ! { (eval echo configure:4873: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! ac_err=`grep -v '^ *+' conftest.out`
   if test -z "$ac_err"; then
     rm -rf conftest*
---- 5000,5016 ----
+    eval "ac_cv_header_$ac_safe=yes"
+--- 5085,5102 ----
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-! echo "configure:5004: checking for $ac_hdr" >&5
+! echo "configure:5089: checking for $ac_hdr" >&5
   if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 5009 "configure"
+! #line 5094 "configure"
   #include "confdefs.h"
   #include <$ac_hdr>
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-! { (eval echo configure:5014: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! { (eval echo configure:5099: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+! ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
   if test -z "$ac_err"; then
     rm -rf conftest*
+    eval "ac_cv_header_$ac_safe=yes"
 ***************
-*** 4905,4921 ****
+*** 4905,4922 ****
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
@@ -3154,29 +3703,31 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
 ! { (eval echo configure:4919: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! ac_err=`grep -v '^ *+' conftest.out`
   if test -z "$ac_err"; then
     rm -rf conftest*
---- 5046,5062 ----
+    eval "ac_cv_header_$ac_safe=yes"
+--- 5131,5148 ----
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-! echo "configure:5050: checking for $ac_hdr" >&5
+! echo "configure:5135: checking for $ac_hdr" >&5
   if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 5055 "configure"
+! #line 5140 "configure"
   #include "confdefs.h"
   #include <$ac_hdr>
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-! { (eval echo configure:5060: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! { (eval echo configure:5145: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+! ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
   if test -z "$ac_err"; then
     rm -rf conftest*
+    eval "ac_cv_header_$ac_safe=yes"
 ***************
-*** 4942,4958 ****
+*** 4942,4959 ****
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
@@ -3191,29 +3742,31 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
 ! { (eval echo configure:4956: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! ac_err=`grep -v '^ *+' conftest.out`
   if test -z "$ac_err"; then
     rm -rf conftest*
---- 5083,5099 ----
+    eval "ac_cv_header_$ac_safe=yes"
+--- 5168,5185 ----
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-! echo "configure:5087: checking for $ac_hdr" >&5
+! echo "configure:5172: checking for $ac_hdr" >&5
   if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 5092 "configure"
+! #line 5177 "configure"
   #include "confdefs.h"
   #include <$ac_hdr>
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-! { (eval echo configure:5097: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! { (eval echo configure:5182: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+! ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
   if test -z "$ac_err"; then
     rm -rf conftest*
+    eval "ac_cv_header_$ac_safe=yes"
 ***************
-*** 4979,4995 ****
+*** 4979,4996 ****
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
@@ -3228,29 +3781,31 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
 ! { (eval echo configure:4993: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! ac_err=`grep -v '^ *+' conftest.out`
   if test -z "$ac_err"; then
     rm -rf conftest*
---- 5120,5136 ----
+    eval "ac_cv_header_$ac_safe=yes"
+--- 5205,5222 ----
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-! echo "configure:5124: checking for $ac_hdr" >&5
+! echo "configure:5209: checking for $ac_hdr" >&5
   if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 5129 "configure"
+! #line 5214 "configure"
   #include "confdefs.h"
   #include <$ac_hdr>
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-! { (eval echo configure:5134: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! { (eval echo configure:5219: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+! ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
   if test -z "$ac_err"; then
     rm -rf conftest*
+    eval "ac_cv_header_$ac_safe=yes"
 ***************
-*** 5026,5042 ****
+*** 5026,5043 ****
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
@@ -3265,27 +3820,29 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
 ! { (eval echo configure:5040: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! ac_err=`grep -v '^ *+' conftest.out`
   if test -z "$ac_err"; then
     rm -rf conftest*
---- 5167,5183 ----
+    eval "ac_cv_header_$ac_safe=yes"
+--- 5252,5269 ----
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-! echo "configure:5171: checking for $ac_hdr" >&5
+! echo "configure:5256: checking for $ac_hdr" >&5
   if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 5176 "configure"
+! #line 5261 "configure"
   #include "confdefs.h"
   #include <$ac_hdr>
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-! { (eval echo configure:5181: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! { (eval echo configure:5266: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+! ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
   if test -z "$ac_err"; then
     rm -rf conftest*
+    eval "ac_cv_header_$ac_safe=yes"
 ***************
 *** 5066,5072 ****
   
@@ -3295,11 +3852,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ac_lib_var=`echo gssapi'_'gss_init_sec_context | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 5207,5213 ----
+--- 5292,5298 ----
   
   if test "${with_gssapi+set}" = set; then
     echo $ac_n "checking for gss_init_sec_context in -lgssapi""... $ac_c" 1>&6
-! echo "configure:5211: checking for gss_init_sec_context in -lgssapi" >&5
+! echo "configure:5296: checking for gss_init_sec_context in -lgssapi" >&5
   ac_lib_var=`echo gssapi'_'gss_init_sec_context | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
@@ -3312,11 +3869,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
---- 5215,5221 ----
+--- 5300,5306 ----
     ac_save_LIBS="$LIBS"
   LIBS="-lgssapi  $LIBS"
   cat > conftest.$ac_ext <<EOF
-! #line 5219 "configure"
+! #line 5304 "configure"
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
@@ -3329,16 +3886,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
---- 5226,5232 ----
+--- 5311,5317 ----
   gss_init_sec_context()
   ; return 0; }
   EOF
-! if { (eval echo configure:5230: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:5315: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
 ***************
-*** 5116,5132 ****
+*** 5116,5133 ****
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
@@ -3353,27 +3910,29 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
 ! { (eval echo configure:5130: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! ac_err=`grep -v '^ *+' conftest.out`
   if test -z "$ac_err"; then
     rm -rf conftest*
---- 5257,5273 ----
+    eval "ac_cv_header_$ac_safe=yes"
+--- 5342,5359 ----
   do
   ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-! echo "configure:5261: checking for $ac_hdr" >&5
+! echo "configure:5346: checking for $ac_hdr" >&5
   if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 5266 "configure"
+! #line 5351 "configure"
   #include "confdefs.h"
   #include <$ac_hdr>
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-! { (eval echo configure:5271: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! { (eval echo configure:5356: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+! ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
   if test -z "$ac_err"; then
     rm -rf conftest*
+    eval "ac_cv_header_$ac_safe=yes"
 ***************
 *** 5157,5163 ****
   # Solaris requires -lintl if you want strerror (which calls dgettext)
@@ -3383,11 +3942,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ac_lib_var=`echo intl'_'dgettext | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
---- 5298,5304 ----
+--- 5383,5389 ----
   # Solaris requires -lintl if you want strerror (which calls dgettext)
   # to return localized messages.
   echo $ac_n "checking for dgettext in -lintl""... $ac_c" 1>&6
-! echo "configure:5302: checking for dgettext in -lintl" >&5
+! echo "configure:5387: checking for dgettext in -lintl" >&5
   ac_lib_var=`echo intl'_'dgettext | sed 'y%./+-%__p_%'`
   if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
@@ -3400,11 +3959,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
---- 5306,5312 ----
+--- 5391,5397 ----
     ac_save_LIBS="$LIBS"
   LIBS="-lintl  $LIBS"
   cat > conftest.$ac_ext <<EOF
-! #line 5310 "configure"
+! #line 5395 "configure"
   #include "confdefs.h"
   /* Override any gcc2 internal prototype to avoid an error.  */
   /* We use char because int might match the return type of a gcc2
@@ -3417,11 +3976,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
---- 5317,5323 ----
+--- 5402,5408 ----
   dgettext()
   ; return 0; }
   EOF
-! if { (eval echo configure:5321: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:5406: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_lib_$ac_lib_var=yes"
   else
@@ -3434,11 +3993,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   if eval "test \"`echo '$''{'emacs_cv_localtime_cache'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
---- 5346,5352 ----
+--- 5431,5437 ----
   
   
   echo $ac_n "checking whether localtime caches TZ""... $ac_c" 1>&6
-! echo "configure:5350: checking whether localtime caches TZ" >&5
+! echo "configure:5435: checking whether localtime caches TZ" >&5
   if eval "test \"`echo '$''{'emacs_cv_localtime_cache'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
@@ -3451,11 +4010,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   #include <time.h>
   #if STDC_HEADERS
---- 5356,5362 ----
+--- 5441,5447 ----
   emacs_cv_localtime_cache=yes
   else
     cat > conftest.$ac_ext <<EOF
-! #line 5360 "configure"
+! #line 5445 "configure"
   #include "confdefs.h"
   #include <time.h>
   #if STDC_HEADERS
@@ -3468,11 +4027,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   then
     emacs_cv_localtime_cache=no
   else
---- 5391,5397 ----
+--- 5476,5482 ----
     exit (0);
   }
   EOF
-! if { (eval echo configure:5395: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest && (./conftest; exit) 2>/dev/null
+! if { (eval echo configure:5480: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext} && (./conftest; exit) 2>/dev/null
   then
     emacs_cv_localtime_cache=no
   else
@@ -3490,16 +4049,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   
   #ifdef TIME_WITH_SYS_TIME
---- 5419,5430 ----
+--- 5504,5515 ----
   
   if test "x$HAVE_TIMEVAL" = xyes; then
   echo $ac_n "checking whether gettimeofday can accept two arguments""... $ac_c" 1>&6
-! echo "configure:5423: checking whether gettimeofday can accept two arguments" >&5
+! echo "configure:5508: checking whether gettimeofday can accept two arguments" >&5
   if eval "test \"`echo '$''{'emacs_cv_gettimeofday_two_arguments'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 5428 "configure"
+! #line 5513 "configure"
   #include "confdefs.h"
   
   #ifdef TIME_WITH_SYS_TIME
@@ -3512,11 +4071,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     emacs_cv_gettimeofday_two_arguments=yes
   else
---- 5446,5452 ----
+--- 5531,5537 ----
   
   ; return 0; }
   EOF
-! if { (eval echo configure:5450: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:5535: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     emacs_cv_gettimeofday_two_arguments=yes
   else
@@ -3534,16 +4093,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #include "confdefs.h"
   /* System header to define __stub macros and hopefully few prototypes,
       which can conflict with char socket(); below.  */
---- 5469,5480 ----
+--- 5554,5565 ----
   
   ok_so_far=yes
   echo $ac_n "checking for socket""... $ac_c" 1>&6
-! echo "configure:5473: checking for socket" >&5
+! echo "configure:5558: checking for socket" >&5
   if eval "test \"`echo '$''{'ac_cv_func_socket'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 5478 "configure"
+! #line 5563 "configure"
   #include "confdefs.h"
   /* System header to define __stub macros and hopefully few prototypes,
       which can conflict with char socket(); below.  */
@@ -3556,16 +4115,16 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     rm -rf conftest*
     eval "ac_cv_func_socket=yes"
   else
---- 5497,5503 ----
+--- 5582,5588 ----
   
   ; return 0; }
   EOF
-! if { (eval echo configure:5501: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest; then
+! if { (eval echo configure:5586: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
     rm -rf conftest*
     eval "ac_cv_func_socket=yes"
   else
 ***************
-*** 5379,5395 ****
+*** 5379,5396 ****
   if test $ok_so_far = yes; then
     ac_safe=`echo "netinet/in.h" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for netinet/in.h""... $ac_c" 1>&6
@@ -3580,29 +4139,31 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
 ! { (eval echo configure:5393: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! ac_err=`grep -v '^ *+' conftest.out`
   if test -z "$ac_err"; then
     rm -rf conftest*
---- 5520,5536 ----
+    eval "ac_cv_header_$ac_safe=yes"
+--- 5605,5622 ----
   if test $ok_so_far = yes; then
     ac_safe=`echo "netinet/in.h" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for netinet/in.h""... $ac_c" 1>&6
-! echo "configure:5524: checking for netinet/in.h" >&5
+! echo "configure:5609: checking for netinet/in.h" >&5
   if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 5529 "configure"
+! #line 5614 "configure"
   #include "confdefs.h"
   #include <netinet/in.h>
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-! { (eval echo configure:5534: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! { (eval echo configure:5619: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+! ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
   if test -z "$ac_err"; then
     rm -rf conftest*
+    eval "ac_cv_header_$ac_safe=yes"
 ***************
-*** 5415,5431 ****
+*** 5415,5432 ****
   if test $ok_so_far = yes; then
     ac_safe=`echo "arpa/inet.h" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for arpa/inet.h""... $ac_c" 1>&6
@@ -3617,27 +4178,29 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
 ! { (eval echo configure:5429: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! ac_err=`grep -v '^ *+' conftest.out`
   if test -z "$ac_err"; then
     rm -rf conftest*
---- 5556,5572 ----
+    eval "ac_cv_header_$ac_safe=yes"
+--- 5641,5658 ----
   if test $ok_so_far = yes; then
     ac_safe=`echo "arpa/inet.h" | sed 'y%./+-%__p_%'`
   echo $ac_n "checking for arpa/inet.h""... $ac_c" 1>&6
-! echo "configure:5560: checking for arpa/inet.h" >&5
+! echo "configure:5645: checking for arpa/inet.h" >&5
   if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
     echo $ac_n "(cached) $ac_c" 1>&6
   else
     cat > conftest.$ac_ext <<EOF
-! #line 5565 "configure"
+! #line 5650 "configure"
   #include "confdefs.h"
   #include <arpa/inet.h>
   EOF
   ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-! { (eval echo configure:5570: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
-  ac_err=`grep -v '^ *+' conftest.out`
+! { (eval echo configure:5655: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+! ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
   if test -z "$ac_err"; then
     rm -rf conftest*
+    eval "ac_cv_header_$ac_safe=yes"
 ***************
 *** 5465,5473 ****
   # Set up the CFLAGS for real compilation, so we can substitute it.
@@ -3649,7 +4212,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   if test x"${version}" = x; then
     { echo "configure: error: can't find current emacs version in \`${srcdir}/lisp/version.el'." 1>&2; exit 1; }
   fi
---- 5606,5616 ----
+--- 5691,5701 ----
   # Set up the CFLAGS for real compilation, so we can substitute it.
   CFLAGS="$REAL_CFLAGS"
   
@@ -3663,10 +4226,14 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   fi
 ***************
 *** 5505,5510 ****
---- 5648,5656 ----
+--- 5733,5745 ----
   
   
   
++ 
++ 
++ 
++ 
 + 
 + 
 + 
@@ -3675,7 +4242,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EOF
 ***************
 *** 5537,5542 ****
---- 5683,5692 ----
+--- 5772,5781 ----
   #define UNEXEC_SRC ${UNEXEC_SRC}
   EOF
   
@@ -3701,7 +4268,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   if test -n "${x_includes}"; then
   echo "  Where do we find X Windows header files?                ${x_includes}"
---- 5742,5755 ----
+--- 5831,5844 ----
   Configured for \`${canonical}'.
   
     Where should the build process find the source code?    ${srcdir}
@@ -3717,31 +4284,64 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   if test -n "${x_includes}"; then
   echo "  Where do we find X Windows header files?                ${x_includes}"
 ***************
-*** 5642,5648 ****
-  # Ultrix sh set writes to stderr and can't be redirected directly,
-  # and sets the high bit in the cache file unless we assign to the vars.
-  (set) 2>&1 |
-!   case `(ac_space=' '; set | grep ac_space) 2>&1` in
-    *ac_space=\ *)
-      # `set' does not quote correctly, so add quotes (double-quote substitution
-      # turns \\\\ into \\, and sed turns \\ into \).
---- 5793,5799 ----
-  # Ultrix sh set writes to stderr and can't be redirected directly,
-  # and sets the high bit in the cache file unless we assign to the vars.
-  (set) 2>&1 |
-!   case `(ac_space=' '; set) 2>&1` in
-    *ac_space=\ *)
-      # `set' does not quote correctly, so add quotes (double-quote substitution
-      # turns \\\\ into \\, and sed turns \\ into \).
+*** 5709,5715 ****
+      echo "running \${CONFIG_SHELL-/bin/sh} $0 $ac_configure_args --no-create --no-recursion"
+      exec \${CONFIG_SHELL-/bin/sh} $0 $ac_configure_args --no-create --no-recursion ;;
+    -version | --version | --versio | --versi | --vers | --ver | --ve | --v)
+!     echo "$CONFIG_STATUS generated by autoconf version 2.12"
+      exit 0 ;;
+    -help | --help | --hel | --he | --h)
+      echo "\$ac_cs_usage"; exit 0 ;;
+--- 5949,5955 ----
+      echo "running \${CONFIG_SHELL-/bin/sh} $0 $ac_configure_args --no-create --no-recursion"
+      exec \${CONFIG_SHELL-/bin/sh} $0 $ac_configure_args --no-create --no-recursion ;;
+    -version | --version | --versio | --versi | --vers | --ver | --ve | --v)
+!     echo "$CONFIG_STATUS generated by autoconf version 2.13"
+      exit 0 ;;
+    -help | --help | --hel | --he | --h)
+      echo "\$ac_cs_usage"; exit 0 ;;
 ***************
-*** 5764,5771 ****
---- 5915,5926 ----
+*** 5722,5728 ****
+  
+  trap 'rm -fr `echo "Makefile lib-src/Makefile.c:lib-src/Makefile.in oldXMenu/Makefile \
+  	man/Makefile lwlib/Makefile src/Makefile.c:src/Makefile.in \
+! 	leim/Makefile src/config.h:src/config.in" | sed "s/:[^ ]*//g"` conftest*; exit 1' 1 2 15
+  EOF
+  cat >> $CONFIG_STATUS <<EOF
+  
+--- 5962,5968 ----
+  
+  trap 'rm -fr `echo "Makefile lib-src/Makefile.c:lib-src/Makefile.in oldXMenu/Makefile \
+  	man/Makefile lwlib/Makefile src/Makefile.c:src/Makefile.in \
+! 	leim/Makefile perl/Makefile.PL src/xs/perlxs.xs:src/xs/perlxs.in src/config.h:src/config.in" | sed "s/:[^ ]*//g"` conftest*; exit 1' 1 2 15
+  EOF
+  cat >> $CONFIG_STATUS <<EOF
+  
+***************
+*** 5731,5739 ****
+--- 5971,5981 ----
+   s/@@/%@/; s/@@/@%/; s/@g\$/%g/' > conftest.subs <<\\CEOF
+  $ac_vpsub
+  $extrasub
++ s%@SHELL@%$SHELL%g
+  s%@CFLAGS@%$CFLAGS%g
+  s%@CPPFLAGS@%$CPPFLAGS%g
+  s%@CXXFLAGS@%$CXXFLAGS%g
++ s%@FFLAGS@%$FFLAGS%g
+  s%@DEFS@%$DEFS%g
+  s%@LDFLAGS@%$LDFLAGS%g
+  s%@LIBS@%$LIBS%g
+***************
+*** 5761,5771 ****
+--- 6003,6016 ----
+  s%@LN_S@%$LN_S%g
+  s%@CPP@%$CPP%g
+  s%@INSTALL_PROGRAM@%$INSTALL_PROGRAM%g
++ s%@INSTALL_SCRIPT@%$INSTALL_SCRIPT%g
   s%@INSTALL_DATA@%$INSTALL_DATA%g
   s%@YACC@%$YACC%g
   s%@SET_MAKE@%$SET_MAKE%g
 + s%@PERL@%$PERL%g
-+ s%@PERL_CCOPTS@%$PERL_CCOPTS%g
-+ s%@PERL_LDOPTS@%$PERL_LDOPTS%g
   s%@ALLOCA@%$ALLOCA%g
   s%@version@%$version%g
 + s%@perlmacs_version@%$perlmacs_version%g
@@ -3750,7 +4350,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   s%@srcdir@%$srcdir%g
 ***************
 *** 5776,5781 ****
---- 5931,5937 ----
+--- 6021,6027 ----
   s%@etcdir@%$etcdir%g
   s%@archlibdir@%$archlibdir%g
   s%@docdir@%$docdir%g
@@ -3758,9 +4358,39 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   s%@bitmapdir@%$bitmapdir%g
   s%@c_switch_system@%$c_switch_system%g
   s%@c_switch_machine@%$c_switch_machine%g
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/configure.in perlmacs-0.13/configure.in
+***************
+*** 5786,5791 ****
+--- 6032,6041 ----
+  s%@machfile@%$machfile%g
+  s%@opsysfile@%$opsysfile%g
+  s%@RANLIB@%$RANLIB%g
++ s%@maybe_perl@%$maybe_perl%g
++ s%@PERL_CCOPTS@%$PERL_CCOPTS%g
++ s%@PERL_LDOPTS@%$PERL_LDOPTS%g
++ s%@EMBED_PERL@%$EMBED_PERL%g
+  
+  CEOF
+  EOF
+***************
+*** 5829,5835 ****
+  
+  CONFIG_FILES=\${CONFIG_FILES-"Makefile lib-src/Makefile.c:lib-src/Makefile.in oldXMenu/Makefile \
+  	man/Makefile lwlib/Makefile src/Makefile.c:src/Makefile.in \
+! 	leim/Makefile"}
+  EOF
+  cat >> $CONFIG_STATUS <<\EOF
+  for ac_file in .. $CONFIG_FILES; do if test "x$ac_file" != x..; then
+--- 6079,6085 ----
+  
+  CONFIG_FILES=\${CONFIG_FILES-"Makefile lib-src/Makefile.c:lib-src/Makefile.in oldXMenu/Makefile \
+  	man/Makefile lwlib/Makefile src/Makefile.c:src/Makefile.in \
+! 	leim/Makefile perl/Makefile.PL src/xs/perlxs.xs:src/xs/perlxs.in"}
+  EOF
+  cat >> $CONFIG_STATUS <<\EOF
+  for ac_file in .. $CONFIG_FILES; do if test "x$ac_file" != x..; then
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/configure.in perlmacs-0.14/configure.in
 *** emacs-20.3/configure.in	Tue Jun 30 18:15:05 1998
---- perlmacs-0.13/configure.in	Fri Mar 19 20:58:34 1999
+--- perlmacs-0.14/configure.in	Thu Mar 30 01:58:43 2000
 ***************
 *** 26,38 ****
   AC_INIT(src/lisp.h)
@@ -3829,6 +4459,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
 +   AC_EMBED_PERL
 +   if test "x$ac_embed_perl" = xyes; then
 +     AC_DEFINE(EMBED_PERL)
++     maybe_perl=perl
 +     if ${PERL} -MConfig -e 'exit ($Config{usemymalloc} eq "y" ? 0 : 1)';
 +     then
 +       perl_malloc=yes
@@ -3836,11 +4467,10 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
 +     else
 +       perl_malloc=no
 +     fi
++   else
++     maybe_perl=
 +   fi
 + fi
-+ 
-+ AC_SUBST(PERL_CCOPTS)
-+ AC_SUBST(PERL_LDOPTS)
 + 
   #### Choose a window system.
   
@@ -3907,8 +4537,21 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   AC_SUBST(c_switch_system)
   AC_SUBST(c_switch_machine)
 ***************
+*** 1793,1798 ****
+--- 1843,1852 ----
+  AC_SUBST(machfile)
+  AC_SUBST(opsysfile)
+  AC_SUBST(RANLIB)
++ AC_SUBST(maybe_perl)
++ AC_SUBST(PERL_CCOPTS)
++ AC_SUBST(PERL_LDOPTS)
++ AC_SUBST(EMBED_PERL)
+  
+  AC_DEFINE_UNQUOTED(EMACS_CONFIGURATION,  "${canonical}")
+  AC_DEFINE_UNQUOTED(EMACS_CONFIG_OPTIONS, "${ac_configure_args}")
+***************
 *** 1802,1807 ****
---- 1852,1858 ----
+--- 1856,1862 ----
   AC_DEFINE_UNQUOTED(LD_SWITCH_X_SITE_AUX, ${LD_SWITCH_X_SITE_AUX})
   AC_DEFINE_UNQUOTED(C_SWITCH_X_SITE,  ${C_SWITCH_X_SITE})
   AC_DEFINE_UNQUOTED(UNEXEC_SRC,       ${UNEXEC_SRC})
@@ -3931,7 +4574,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   if test -n "${x_includes}"; then
   echo "  Where do we find X Windows header files?                ${x_includes}"
---- 1884,1897 ----
+--- 1888,1901 ----
   Configured for \`${canonical}'.
   
     Where should the build process find the source code?    ${srcdir}
@@ -3946,9 +4589,27 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   if test -n "${x_includes}"; then
   echo "  Where do we find X Windows header files?                ${x_includes}"
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/lisp/loadup.el perlmacs-0.13/lisp/loadup.el
+***************
+*** 1864,1870 ****
+  
+  AC_OUTPUT(Makefile lib-src/Makefile.c:lib-src/Makefile.in oldXMenu/Makefile \
+  	man/Makefile lwlib/Makefile src/Makefile.c:src/Makefile.in \
+! 	leim/Makefile, [
+  
+  ### Make the necessary directories, if they don't exist.
+  for dir in cpp etc lisp ; do
+--- 1920,1926 ----
+  
+  AC_OUTPUT(Makefile lib-src/Makefile.c:lib-src/Makefile.in oldXMenu/Makefile \
+  	man/Makefile lwlib/Makefile src/Makefile.c:src/Makefile.in \
+! 	leim/Makefile perl/Makefile.PL src/xs/perlxs.xs:src/xs/perlxs.in, [
+  
+  ### Make the necessary directories, if they don't exist.
+  for dir in cpp etc lisp ; do
+Only in perlmacs-0.14/lisp: .cvsignore
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/lisp/loadup.el perlmacs-0.14/lisp/loadup.el
 *** emacs-20.3/lisp/loadup.el	Thu Aug 13 19:00:19 1998
---- perlmacs-0.13/lisp/loadup.el	Sat Apr  3 17:47:54 1999
+--- perlmacs-0.14/lisp/loadup.el	Sat Apr  3 17:47:54 1999
 ***************
 *** 118,123 ****
 --- 118,126 ----
@@ -3961,17 +4622,17 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   (load "replace")
   (if (eq system-type 'vax-vms)
       (progn
-Only in perlmacs-0.13/lisp: perl-data.el
-Only in perlmacs-0.13/lisp: perl-regex.el
-Only in perlmacs-0.13/lisp: perl.el
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/lisp/startup.el perlmacs-0.13/lisp/startup.el
+Only in perlmacs-0.14/lisp: perl-data.el
+Only in perlmacs-0.14/lisp: perl-regex.el
+Only in perlmacs-0.14/lisp: perl.el
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/lisp/startup.el perlmacs-0.14/lisp/startup.el
 *** emacs-20.3/lisp/startup.el	Fri Aug  7 19:18:30 1998
---- perlmacs-0.13/lisp/startup.el	Sun Mar 28 17:20:32 1999
+--- perlmacs-0.14/lisp/startup.el	Fri Mar 31 01:08:08 2000
 ***************
 *** 1,3 ****
 --- 1,6 ----
 + ;;; Modified 28 March 1999 by John Tobey for Perlmacs.
-+ ;;; Copyright (C) 1998-1999 John Tobey.
++ ;;; Copyright (C) 1998-2000 John Tobey.
 + 
   ;;; startup.el --- process Emacs shell arguments
   
@@ -4019,7 +4680,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   ")
   			     (insert "\n\n" (emacs-version)
   				     "
-+ Copyright (C) 1998-1999 John Tobey
++ Copyright (C) 1998-2000 John Tobey
   Copyright (C) 1998 Free Software Foundation, Inc."))
   			 ;; If keys have their default meanings,
   			 ;; use precomputed string to save lots of time.
@@ -4066,7 +4727,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   			 (insert "\n\n" (emacs-version)
   				 "
-+ Copyright (C) 1998-1999 John Tobey
++ Copyright (C) 1998-2000 John Tobey
   Copyright (C) 1998 Free Software Foundation, Inc.")
   			 (if (and (eq (key-binding "\C-h\C-c") 'describe-copying)
   				  (eq (key-binding "\C-h\C-d") 'describe-distribution)
@@ -4082,9 +4743,10 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   		       (goto-char (point-min))
   
   		       (set-buffer-modified-p nil)
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/lwlib/Makefile.in perlmacs-0.13/lwlib/Makefile.in
+Only in perlmacs-0.14/lwlib: .cvsignore
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/lwlib/Makefile.in perlmacs-0.14/lwlib/Makefile.in
 *** emacs-20.3/lwlib/Makefile.in	Sat Aug  1 20:27:59 1998
---- perlmacs-0.13/lwlib/Makefile.in	Sat Mar  6 16:06:04 1999
+--- perlmacs-0.14/lwlib/Makefile.in	Sat Mar  6 16:06:04 1999
 ***************
 *** 50,57 ****
   #If running ranlib fails, probably there is none.
@@ -4109,10 +4771,12 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   	$(CC) -c $(TOOLKIT_DEFINES) $(ALL_CFLAGS) $(srcdir)/lwlib.c
   
   xrdb-cpp.o:  $(srcdir)/xrdb-cpp.c
-Only in perlmacs-0.13: noperl-build
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/.gdbinit perlmacs-0.13/src/.gdbinit
+Only in perlmacs-0.14/man: .cvsignore
+Only in perlmacs-0.14: perl
+Only in perlmacs-0.14/src: .cvsignore
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/.gdbinit perlmacs-0.14/src/.gdbinit
 *** emacs-20.3/src/.gdbinit	Sat May  9 21:04:51 1998
---- perlmacs-0.13/src/.gdbinit	Sun Feb  7 20:25:45 1999
+--- perlmacs-0.14/src/.gdbinit	Sun Feb  7 20:25:45 1999
 ***************
 *** 291,296 ****
 --- 291,305 ----
@@ -4131,9 +4795,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   set print pretty on
   set print sevenbit-strings
   
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/Makefile.in perlmacs-0.13/src/Makefile.in
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/Makefile.in perlmacs-0.14/src/Makefile.in
 *** emacs-20.3/src/Makefile.in	Sat Aug  1 20:29:21 1998
---- perlmacs-0.13/src/Makefile.in	Sun Mar  7 16:54:09 1999
+--- perlmacs-0.14/src/Makefile.in	Thu Mar 30 11:19:24 2000
 ***************
 *** 1,3 ****
 --- 1,7 ----
@@ -4169,7 +4833,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   @SET_MAKE@
 ***************
 *** 277,282 ****
---- 286,300 ----
+--- 286,314 ----
   .c.o:
   	$(CC) -c $(CPPFLAGS) $(ALL_CFLAGS) $<
   
@@ -4182,17 +4846,31 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
 + perlxsi.c:
 + 	$(PERL) -MExtUtils::Embed -e xsinit -- -o $@
 + 
++ xs/Makefile.PL:
++ 	test -d xs || mkdir xs
++ 	echo 'use ExtUtils::MakeMaker; WriteMakefile' >$@
++ 
++ xs/Makefile: xs/Makefile.PL xs/perlxs.xs
++ 	cd xs && $(PERL) Makefile.PL NAME=XS VERSION=0.0
++ 
++ xs/perlxs.xs: $(srcdir)/xs/perlxs.in
++ 	cd .. && ./config.status
++ perlxs.c: xs/Makefile xs/perlxs.xs
++ 	cd xs && ${MAKE} ${MFLAGS} $@ && mv -f $@ ..
++ perlxs.o: perlxs.c perlmacs.h paths.h
++ 	$(CC) -c $(CPPFLAGS) $(ALL_CFLAGS) $(PERL_CCOPTS) perlxs.c
++ 
   #ifndef LIBX10_MACHINE
   #define LIBX10_MACHINE
   #endif
 ***************
 *** 382,387 ****
---- 400,409 ----
+--- 414,423 ----
   #endif /* not HAVE_X11 */
   #endif /* not HAVE_X_WINDOWS */
   
 + #ifdef EMBED_PERL
-+ PERLOBJ= perlmacs.o perlxsi.o
++ PERLOBJ= perlmacs.o perlxsi.o perlxs.o
 + #endif /* EMBED_PERL */
 + 
   #ifndef ORDINARY_LINK
@@ -4207,7 +4885,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   /* Object files used on some machine or other.
      These go in the DOC file on all machines
---- 543,550 ----
+--- 557,564 ----
   	abbrev.o syntax.o UNEXEC mocklisp.o bytecode.o \
   	process.o callproc.o \
   	region-cache.o \
@@ -4218,7 +4896,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
      These go in the DOC file on all machines
 ***************
 *** 628,633 ****
---- 651,662 ----
+--- 665,676 ----
   #define WINNT_SUPPORT
   #endif
   
@@ -4233,7 +4911,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
      loadup.el this way.
 ***************
 *** 705,710 ****
---- 734,740 ----
+--- 748,754 ----
   	WINNT_SUPPORT \
   	${lispsource}widget.elc \
   	${lispsource}window.elc \
@@ -4256,7 +4934,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
      LIBS_DEBUG $(GNULIB_VAR) LIB_MATH LIB_STANDARD $(GNULIB_VAR)
   
   /* Enable recompilation of certain other files depending on system type.  */
---- 810,824 ----
+--- 824,838 ----
     ${dotdot}/lisp/select.elc ${dotdot}/lisp/scroll-bar.elc \
     ${dotdot}/lisp/vmsproc.elc ${dotdot}/lisp/vms-patch.elc \
     ${dotdot}/lisp/ls-lisp.elc ${dotdot}/lisp/dos-fns.elc \
@@ -4273,6 +4951,36 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   /* Enable recompilation of certain other files depending on system type.  */
 ***************
+*** 804,810 ****
+  #define OBJECTS_MACHINE
+  #endif
+  
+! all: emacs OTHER_FILES
+  
+  emacs: temacs ${etc}DOC ${lisp}
+  #ifdef CANNOT_DUMP
+--- 850,856 ----
+  #define OBJECTS_MACHINE
+  #endif
+  
+! all: emacs perlmacs OTHER_FILES
+  
+  emacs: temacs ${etc}DOC ${lisp}
+  #ifdef CANNOT_DUMP
+***************
+*** 819,824 ****
+--- 865,874 ----
+  #endif /* ! defined (CANNOT_DUMP) */
+  	-./emacs -q -batch -f list-load-path-shadows
+  
++ perlmacs: emacs
++ 	rm -f perlmacs
++ 	ln emacs perlmacs
++ 
+  /* We run make-docfile twice because the command line may get too long
+     on some systems.  */
+  /* ${SOME_MACHINE_OBJECTS} comes before ${obj} because some files may
+***************
 *** 1108,1114 ****
    blockinput.h charset.h $(config_h) INTERVAL_SRC
   bytecode.o: bytecode.c buffer.h syntax.h $(config_h)
@@ -4281,7 +4989,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   floatfns.o: floatfns.c $(config_h)
   fns.o: fns.c commands.h $(config_h) frame.h buffer.h keyboard.h \
    frame.h window.h INTERVAL_SRC
---- 1140,1146 ----
+--- 1158,1164 ----
    blockinput.h charset.h $(config_h) INTERVAL_SRC
   bytecode.o: bytecode.c buffer.h syntax.h $(config_h)
   data.o: data.c buffer.h puresize.h charset.h syssignal.h keyboard.h $(config_h)
@@ -4290,25 +4998,27 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   fns.o: fns.c commands.h $(config_h) frame.h buffer.h keyboard.h \
    frame.h window.h INTERVAL_SRC
 ***************
-*** 1130,1136 ****
+*** 1130,1137 ****
   ${libsrc}emacstool: ${libsrc}emacstool.c
   	cd ${libsrc}; ${MAKE} ${MFLAGS} emacstool
   mostlyclean:
 ! 	rm -f temacs prefix-args core \#* *.o libXMenu11.a liblw.a
-  	rm -f ../etc/DOC
+! 	rm -f ../etc/DOC
   clean: mostlyclean
   	rm -f emacs-* emacs
---- 1162,1168 ----
+  /**/# This is used in making a distribution.
+--- 1180,1187 ----
   ${libsrc}emacstool: ${libsrc}emacstool.c
   	cd ${libsrc}; ${MAKE} ${MFLAGS} emacstool
   mostlyclean:
 ! 	rm -f temacs prefix-args core \#* *.o libXMenu11.a liblw.a perlxsi.c
-  	rm -f ../etc/DOC
+! 	rm -f ../etc/DOC xs/Makefile* xs/*.c xs/*.xs
   clean: mostlyclean
   	rm -f emacs-* emacs
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/alloc.c perlmacs-0.13/src/alloc.c
+  /**/# This is used in making a distribution.
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/alloc.c perlmacs-0.14/src/alloc.c
 *** emacs-20.3/src/alloc.c	Sun Jun  7 17:48:08 1998
---- perlmacs-0.13/src/alloc.c	Sun Mar 21 22:00:51 1999
+--- perlmacs-0.14/src/alloc.c	Sun Mar 21 22:00:51 1999
 ***************
 *** 1,3 ****
 --- 1,6 ----
@@ -4635,9 +5345,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   		/* Set the type of the freed object to Lisp_Misc_Free.
   		   We could leave the type alone, since nobody checks it,
   		   but this might catch bugs faster.  */
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/callproc.c perlmacs-0.13/src/callproc.c
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/callproc.c perlmacs-0.14/src/callproc.c
 *** emacs-20.3/src/callproc.c	Wed Aug 19 13:33:54 1998
---- perlmacs-0.13/src/callproc.c	Fri Mar 19 21:18:37 1999
+--- perlmacs-0.14/src/callproc.c	Fri Mar 19 21:18:37 1999
 ***************
 *** 1,3 ****
 --- 1,6 ----
@@ -4728,9 +5438,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
     DEFVAR_LISP ("configure-info-directory", &Vconfigure_info_directory,
       "For internal use by the build procedure only.\n\
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/config.in perlmacs-0.13/src/config.in
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/config.in perlmacs-0.14/src/config.in
 *** emacs-20.3/src/config.in	Mon May 25 00:07:33 1998
---- perlmacs-0.13/src/config.in	Fri Mar 19 19:50:01 1999
+--- perlmacs-0.14/src/config.in	Fri Mar 19 19:50:01 1999
 ***************
 *** 41,47 ****
   /* Define REL_ALLOC if you want to use the relocating allocator for
@@ -4769,9 +5479,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   /* Define HAVE_X_WINDOWS if you want to use the X window system.  */
   #undef HAVE_X_WINDOWS
   
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/data.c perlmacs-0.13/src/data.c
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/data.c perlmacs-0.14/src/data.c
 *** emacs-20.3/src/data.c	Thu May  7 16:39:17 1998
---- perlmacs-0.13/src/data.c	Sun Feb  7 18:40:08 1999
+--- perlmacs-0.14/src/data.c	Sun Feb  7 18:40:08 1999
 ***************
 *** 1,3 ****
 --- 1,6 ----
@@ -4868,9 +5578,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     defsubr (&Scar);
     defsubr (&Scdr);
     defsubr (&Scar_safe);
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/emacs.c perlmacs-0.13/src/emacs.c
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/emacs.c perlmacs-0.14/src/emacs.c
 *** emacs-20.3/src/emacs.c	Mon Jul 20 21:39:52 1998
---- perlmacs-0.13/src/emacs.c	Sun Mar 28 15:39:12 1999
+--- perlmacs-0.14/src/emacs.c	Fri Mar 31 01:06:43 2000
 ***************
 *** 1,3 ****
 --- 1,6 ----
@@ -5050,11 +5760,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   	{
 ! 	  printf ("Perlmacs %s (GNU Emacs %s)\n",
 ! 		  XSTRING (pmv)->data, XSTRING (emv)->data);
-! 	  printf ("Copyright (C) 1998-1999 John Tobey.\n");
+! 	  printf ("Copyright (C) 1998-2000 John Tobey.\n");
   	  printf ("Copyright (C) 1998 Free Software Foundation, Inc.\n");
 ! #ifdef EMBED_PERL
 ! #ifdef CANNOT_DUMP
-! 	  printf ("Copyright 1987-1998, Larry Wall\n");
+! 	  printf ("Copyright 1987-2000, Larry Wall\n");
 ! #else
 ! 	  printf ("Type `%s --perl -v' for Perl's copyright information.\n",
 ! 		  argv [0]);
@@ -5666,9 +6376,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   #ifndef CANNOT_DUMP
   #ifdef HAVE_SHM
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/eval.c perlmacs-0.13/src/eval.c
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/eval.c perlmacs-0.14/src/eval.c
 *** emacs-20.3/src/eval.c	Sun Apr 26 22:34:24 1998
---- perlmacs-0.13/src/eval.c	Sun Mar 28 14:44:07 1999
+--- perlmacs-0.14/src/eval.c	Sun Mar 28 14:44:07 1999
 ***************
 *** 1,3 ****
 --- 1,6 ----
@@ -5934,10 +6644,10 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
       {
         if (!CONSP (fun))
   	return Fsignal (Qinvalid_function, Fcons (fun, Qnil));
-Only in perlmacs-0.13/src: eval.h
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/fns.c perlmacs-0.13/src/fns.c
+Only in perlmacs-0.14/src: eval.h
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/fns.c perlmacs-0.14/src/fns.c
 *** emacs-20.3/src/fns.c	Tue Aug 18 04:13:03 1998
---- perlmacs-0.13/src/fns.c	Sun Feb  7 18:43:20 1999
+--- perlmacs-0.14/src/fns.c	Sun Feb  7 18:43:20 1999
 ***************
 *** 1,3 ****
 --- 1,6 ----
@@ -6059,21 +6769,23 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   	      return 0;
   	  }
   	return 1;
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/lisp.h perlmacs-0.13/src/lisp.h
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/lisp.h perlmacs-0.14/src/lisp.h
 *** emacs-20.3/src/lisp.h	Tue Aug 18 04:55:40 1998
---- perlmacs-0.13/src/lisp.h	Sun Mar 28 15:46:17 1999
+--- perlmacs-0.14/src/lisp.h	Fri Mar 24 23:12:51 2000
 ***************
 *** 1,3 ****
---- 1,6 ----
+--- 1,8 ----
 + /* Modified 1 Jan 1998 by John Tobey <jtobey@channel1.com>
-+    for use with embedded Perl. */
++    for use with embedded Perl.
++    Copyright (C) 1998,1999,2000 John Tobey
++ */
 + 
   /* Fundamental definitions for GNU Emacs Lisp interpreter.
      Copyright (C) 1985,86,87,93,94,95,97,1998 Free Software Foundation, Inc.
   
 ***************
 *** 28,33 ****
---- 31,43 ----
+--- 33,45 ----
   #define EMACS_UINT unsigned int
   #endif
   
@@ -6089,7 +6801,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   /* This is the set of Lisp data types.  */
 ***************
 *** 85,90 ****
---- 95,101 ----
+--- 97,103 ----
       /* Currently floats are not a misc type,
          but let's define this in case we want to change that.  */
       Lisp_Misc_Float,
@@ -6099,7 +6811,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     };
 ***************
 *** 404,409 ****
---- 415,421 ----
+--- 417,423 ----
   #define XBUFFER_LOCAL_VALUE(a) (&(XMISC(a)->u_buffer_local_value))
   #define XOVERLAY(a) (&(XMISC(a)->u_overlay))
   #define XKBOARD_OBJFWD(a) (&(XMISC(a)->u_kboard_objfwd))
@@ -6109,7 +6821,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #define XPROCESS(a) ((struct Lisp_Process *) XPNTR(a))
 ***************
 *** 426,431 ****
---- 438,445 ----
+--- 440,447 ----
   /* Misc types.  */
   #define XSETMISC(a, b) XSET (a, Lisp_Misc, b)
   #define XSETMARKER(a, b) (XSETMISC (a, b), XMISCTYPE (a) = Lisp_Misc_Marker)
@@ -6120,7 +6832,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #define XSETPSEUDOVECTOR(a, b, code) \
 ***************
 *** 893,898 ****
---- 907,971 ----
+--- 909,973 ----
       int offset;
     };
   
@@ -6188,7 +6900,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
      It uses one of these struct subtypes to get the type field.  */
 ***************
 *** 908,913 ****
---- 981,989 ----
+--- 983,991 ----
       struct Lisp_Buffer_Local_Value u_buffer_local_value;
       struct Lisp_Overlay u_overlay;
       struct Lisp_Kboard_Objfwd u_kboard_objfwd;
@@ -6200,7 +6912,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   #ifdef LISP_FLOAT_TYPE
 ***************
 *** 1074,1079 ****
---- 1150,1157 ----
+--- 1152,1159 ----
   #define GC_VECTORP(x) (GC_VECTORLIKEP (x) && !(XVECTOR (x)->size & PSEUDOVECTOR_FLAG))
   #define OVERLAYP(x) (MISCP (x) && XMISCTYPE (x) == Lisp_Misc_Overlay)
   #define GC_OVERLAYP(x) (GC_MISCP (x) && XMISCTYPE (x) == Lisp_Misc_Overlay)
@@ -6224,10 +6936,10 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   /* defsubr (Sname);
    is how we define the symbol for function `name' at start-up time.  */
   extern void defsubr P_ ((struct Lisp_Subr *));
---- 1362,1367 ----
+--- 1364,1369 ----
 ***************
 *** 1746,1751 ****
---- 1817,1823 ----
+--- 1819,1825 ----
   EXFUN (Fstring_equal, 2);
   EXFUN (Fcompare_strings, 7);
   EXFUN (Fstring_lessp, 2);
@@ -6237,7 +6949,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   				Lisp_Object, Lisp_Object, Lisp_Object, int,
 ***************
 *** 1869,1874 ****
---- 1941,1953 ----
+--- 1943,1955 ----
   #ifdef LISP_FLOAT_TYPE
   extern Lisp_Object make_float P_ ((double));
   #endif /* LISP_FLOAT_TYPE */
@@ -6253,7 +6965,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   extern void free_marker P_ ((Lisp_Object));
 ***************
 *** 1997,2002 ****
---- 2076,2082 ----
+--- 2078,2084 ----
   extern void do_autoload P_ ((Lisp_Object, Lisp_Object));
   extern Lisp_Object un_autoload P_ ((Lisp_Object));
   EXFUN (Ffetch_bytecode, 1);
@@ -6271,7 +6983,7 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EXFUN (Fkill_emacs, 1);
   void shut_down_emacs P_ ((int, int, Lisp_Object));
   /* Nonzero means don't do interactive redisplay and don't change tty modes */
---- 2407,2417 ----
+--- 2409,2419 ----
   
   /* defined in emacs.c */
   extern Lisp_Object decode_env_path P_ ((char *, char *));
@@ -6283,9 +6995,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EXFUN (Fkill_emacs, 1);
   void shut_down_emacs P_ ((int, int, Lisp_Object));
   /* Nonzero means don't do interactive redisplay and don't change tty modes */
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/paths.in perlmacs-0.13/src/paths.in
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/paths.in perlmacs-0.14/src/paths.in
 *** emacs-20.3/src/paths.in	Sat Aug 16 14:29:06 1997
---- perlmacs-0.13/src/paths.in	Fri Mar 19 21:18:25 1999
+--- perlmacs-0.14/src/paths.in	Fri Mar 19 21:18:25 1999
 ***************
 *** 30,35 ****
 --- 30,41 ----
@@ -6301,11 +7013,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   /* Where the configuration process believes the info tree lives.  The
      lisp variable configure-info-directory gets its value from this
      macro, and is then used to set the Info-default-directory-list.  */
-Only in perlmacs-0.13/src: perlmacs.c
-Only in perlmacs-0.13/src: perlmacs.h
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/print.c perlmacs-0.13/src/print.c
+Only in perlmacs-0.14/src: perlmacs.c
+Only in perlmacs-0.14/src: perlmacs.h
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/print.c perlmacs-0.14/src/print.c
 *** emacs-20.3/src/print.c	Fri Aug  7 03:21:18 1998
---- perlmacs-0.13/src/print.c	Sat Feb 20 19:59:06 1999
+--- perlmacs-0.14/src/print.c	Sat Feb 20 19:59:06 1999
 ***************
 *** 1,3 ****
 --- 1,6 ----
@@ -6347,3 +7059,4 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
         /* Remaining cases shouldn't happen in normal usage, but let's print
   	 them anyway for the benefit of the debugger.  */
+Only in perlmacs-0.14/src: xs
