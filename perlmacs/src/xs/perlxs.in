@@ -28,7 +28,7 @@
 
 #include "config.h"
 #include "lisp.h"
-#include <paths.h>
+#include <epaths.h>
 #include "perlmacs.h"
 
 

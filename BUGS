@@ -13,16 +13,18 @@ in Lisp.pm that enters XS and not (normally) a full stack trace.
 GCC warns about incompatible pointer types in alloc.c.
 
 emacs-perlmacs.diff contains problematic stuff /^(Only|diff)/ Also,
-Makefile.PL should chmod -R u+w emacs-20.3 after unzipping for the
+Makefile.PL should chmod -R u+w emacs-20.6 after unzipping for the
 benefit of older Patch programs.
 
 Circular dependencies in Makefile:
 make[1]: Circular src <- perl/Makefile dependency dropped.
 make[1]: Circular src <- lib-src dependency dropped.
 
-`make install' prints error messages from `install-info'.  This also
-affects unpatched emacs-20.3.
+`make install' prints error messages from `install-info'.  This may
+also affect unpatched emacs-20.6.
 
 Running '/usr/local/bin/perl -I/usr/local/lib/perl5/5.6.0 /usr/local/lib/perl5/5.6.0/ExtUtils/xsubpp -v 2>&1' exits with status 16777215 at (eval 29) line 17.
 perlxsi.c: No such file or directory
 perlxs.c: No such file or directory
+
+--disable-perl may no longer work.

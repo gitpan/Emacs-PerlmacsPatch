@@ -319,6 +319,11 @@ DEAD
     find sub { push @files, $File::Find::name if -f }, "perlmacs";
     for (@files) {
 	s|^perlmacs/||;
+	if (-e "$emacs_src/$_" && ! -w "$emacs_src/$_") {
+	    print "Removing $emacs_src/$_\n";
+	    unlink "$emacs_src/$_"
+		or die "Can't remove $emacs_src/$_: $!\n$aborted";
+	}
 	print "Copying perlmacs/$_ to $emacs_src/$_\n";
 	copy "perlmacs/$_", "$emacs_src/$_"
 	    or die "Can't copy file: $!\n$aborted";

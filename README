@@ -1,6 +1,6 @@
-3 May 2000
+5 May 2000
 
-This is version 0.15 of Perlmacs, a program based on GNU Emacs with
+This is version 0.16 of Perlmacs, a program based on GNU Emacs with
 the Perl interpreter linked in.  Perlmacs has all the functionality of
 both Perl and Emacs, and it lets Perl code call functions and access
 variables of Lisp.
@@ -33,13 +33,30 @@ me know right away.
 Perlmacs has not been built on Windows, to my knowledge.
 
 
-NEW IN 0.15
-===========
+NEWS
+====
+
+New in Perlmacs 0.16:
+
+    * Sync with Emacs 20.6.  Emacs 20.3 is no longer supported.
+
+New in Perlmacs 0.15:
 
     * `perlmacs -d -MEmacs -emain' runs the interactive Perl debugger
       in Emacs mode.
 
     * Completed %ENV implementation.
+
+New in Perlmacs 0.14:
+
+    * Support Perl 5.6.0.  (Emacs 20.3 is still required.)
+
+    * Bundle Emacs::Lisp with the distribution.
+
+    * Fix behavior of special Perl variables STDOUT, %ENV, etc. when
+      using Perl 5.6.0 ("print" inserts text in the buffer).
+
+See the file `Changes' for older news.
 
 
 INSTALLATION
@@ -51,16 +68,16 @@ and to take advantage of Perl's `Makefile.PL' interface.  Building and
 installing Emacs::PerlmacsPatch really means building and installing
 Perlmacs.
 
-You will need the GNU Emacs 20.3 source distribution in order to build
-Perlmacs.  Find the file emacs-20.3.tar.gz in a location such as
+You will need the GNU Emacs 20.6 source distribution in order to build
+Perlmacs.  Find the file emacs-20.6.tar.gz in a location such as
 these:
 
-    ftp://ftp.gnu.org/pub/gnu/emacs/emacs-20.3.tar.gz
-    ftp://metalab.unc.edu/pub/gnu/emacs/emacs-20.3.tar.gz
+    http://metalab.unc.edu/pub/gnu/emacs/emacs-20.6.tar.gz
+    ftp://ftp.gnu.org/pub/gnu/emacs/emacs-20.6.tar.gz
 
 Makefile.PL will search the current directory, its parent, and
-possibly other locations for emacs-20.3.tar.gz.  You can specify its
-location by passing EMACS_SRC=/path/to/emacs-20.3.tar.gz as an
+possibly other locations for emacs-20.6.tar.gz.  You can specify its
+location by passing EMACS_SRC=/path/to/emacs-20.6.tar.gz as an
 argument to Makefile.PL.  Failing that, Makefile.PL will offer to
 download it from the net for you.
 
@@ -85,7 +102,7 @@ them to Makefile.PL after a `--'.  For example:
 For a list of `configure' options, do this:
 
     perl Makefile.PL
-    emacs-20.3/configure --help
+    emacs-20.6/configure --help
 
 By default, the program will be installed in the same directory as
 perl under the names `pmacs' and `perlmacs'.  Invoke it as pmacs when
@@ -96,7 +113,7 @@ if Perl's version number is below 5.005, `configure' will exclude Perl
 support, and you will have something close to standard GNU Emacs.  If
 you are unsure about this, watch the messages printed during `make'.
 If they say that Perl is embeddable, good.  If not, have a peek at
-emacs-20.3/build/config.log for clues, and mail me any workarounds.
+emacs-20.6/build/config.log for clues, and mail me any workarounds.
 
 
 LICENSE

@@ -26,7 +26,7 @@
 
 ;;; Code:
 
-(defconst emacs-version "20.3" "\
+(defconst emacs-version "20.6" "\
 Version numbers of this version of Emacs.")
 
 (defconst emacs-major-version
@@ -46,7 +46,7 @@ Time at which Emacs was dumped out.")
 
 (defconst emacs-build-system (system-name))
 
-(defconst perlmacs-version "0.15" "\
+(defconst perlmacs-version "0.16" "\
 Version numbers of the Perlmacs patch applied to this Emacs.")
 
 ;; Gawd this would be so much easier in Perl.  :-)

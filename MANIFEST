@@ -1,14 +1,15 @@
 COPYING
 Changes
 MANIFEST
+MANIFEST.SKIP
 Makefile.PL
 README
 emacs-perlmacs.diff
-perlmacs/BUGS
+BUGS
+TODO
 perlmacs/lisp/startup.elc
 perlmacs/lisp/perl.elc
 perlmacs/lisp/version.el
-perlmacs/TODO
 perlmacs/aclocal.m4
 perlmacs/src/eval.h
 perlmacs/src/perlmacs.c
