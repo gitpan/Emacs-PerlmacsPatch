@@ -1,3 +1,18 @@
+New in Perlmacs 0.11:
+
+    * Fixed a bug affecting Perl code called from Lisp.
+
+New in Perlmacs 0.10:
+
+    * Wrapped the build process in a Perl module distribution.
+
+    * \[1, 2, 3] behaves as a Lisp vector constructor.  Lisp vectors
+      are converted to array-reference references [sic] and vice
+      versa.
+
+    * Rewrote parts of the startup and shutdown code to try to be
+      robust.
+
 New in Perlmacs 0.9.1:
 
     * Fixed a bug which resulted in core dumps during garbage

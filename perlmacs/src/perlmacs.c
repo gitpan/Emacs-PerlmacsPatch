@@ -130,8 +130,8 @@ static void init_perl ();
 #define LISP_XV_INTERP(obj)					\
    (XPERL_INTERPRETER (XFOREIGN_OBJECT (obj)->lisp_data))
 #define PERL_DEFUNCT_P(perl)			\
-   (EQ ((perl)->status, Qdestructed)		\
-    || EQ ((perl)->status, Qbad))
+   (EQ ((perl)->phase, Qdestructed)		\
+    || EQ ((perl)->phase, Qbad))
 
 static Lisp_Object perl_interpreter;
 static Lisp_Object Qmake_perl_interpreter, Qperl_error;
@@ -709,7 +709,7 @@ lisp_perl_destroy (object)
   if (perl == top_level_perl)
     return;
 
-  if (! EQ (perl->phase, Qbad))
+  if (! PERL_DEFUNCT_P (perl))
     Fperl_destruct (object);
   perl_free (perl->interp);
   xfree (perl);
@@ -993,7 +993,11 @@ If no arg is given, shut down the current Perl interpreter.")
   struct gcpro gcpro1;
 
   if (NILP (interpreter))
-    interpreter = perl_interpreter;
+    {
+      interpreter = perl_interpreter;
+      if (NILP (interpreter))
+	return Qnil;
+    }
 
   CHECK_PERL (interpreter);
   perl = XPERL_INTERPRETER (interpreter);

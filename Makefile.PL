@@ -34,12 +34,14 @@ for my $i (0 .. $#ARGV) {
   shift @configure_opts;
   
   for (@configure_opts) {
-    s|'|'\\''|g; $_ = "'$_'";
+    s|'|'\\''|g;
+    s|\$|\$\$|g;
+    $_ = "'$_'";
   }
   last;
 }
 
-grep { /^--p/ } @configure_opts
+grep { /^'--p/ } @configure_opts
   or push @configure_opts, '--prefix=$(PREFIX)';
 
 find_emacs_src () unless defined $emacs_src;
@@ -62,13 +64,16 @@ sub MY::post_initialize {
 sub MY::top_targets {
   return <<END;
 
-all : $emacs_src/build/src/emacs
+all : $emacs_src/build $emacs_src/build/src/emacs
 
 $emacs_src/build/src/emacs : $emacs_src/build/Makefile
 	cd $emacs_src/build && \$(MAKE) all
 
 $emacs_src/build/Makefile :
 	cd $emacs_src/build && PERL=\$(FULLPERL) ../configure @configure_opts
+
+$emacs_src/build :
+	mkdir \$\@
 END
 }
 
@@ -95,14 +100,18 @@ emacs-perlmacs.diff : $emacs_src $emacs_src/src $emacs_src/lisp \$(PURE_EMACS_SR
 	test -d perlmacs-$perlmacs_ver || ln -s $emacs_src perlmacs-$perlmacs_ver
 	test ! -f emacs-$emacs_ver/src/perlmacs.c
 	test -d emacs-$emacs_ver || ln -s \$(PURE_EMACS_SRC) emacs-$emacs_ver
-	diff -cr --exclude=build --exclude=\\*.elc --exclude=version.el --exclude=CVS --exclude=README\\* --exclude=BUGS emacs-$emacs_ver perlmacs-$perlmacs_ver > \$\@ || true
+	diff -cr --exclude=build --exclude=\\*.elc --exclude=version.el \\
+		--exclude=CVS --exclude=README\\* --exclude=BUGS \\
+		emacs-$emacs_ver perlmacs-$perlmacs_ver \\
+		> \$\@.tmp || test \$\$? = 1
+	mv -f \$\@.tmp \$\@
 
 clean ::
 	-cd $emacs_src/build && \$(MAKE) clean
-	\$(RM_F) perlmacs-*
+	\$(RM_F) perlmacs-* emacs-perlmacs.diff.tmp
 
 distclean ::
-	\$(RM_RF) $emacs_src/build emacs-$emacs_ver
+	\$(RM_RF) $emacs_src/build
 END
 }
 
@@ -296,5 +305,4 @@ DEAD
 	copy "perlmacs/$_", "$emacs_src/$_"
 	    or die "Can't copy file: $!\n$aborted";
     }
-    mkdir "$emacs_src/build", 0777 or die "mkdir: $!";
 }
