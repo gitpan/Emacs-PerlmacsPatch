@@ -1,6 +1,6 @@
-28 March 1999
+3 April 1999
 
-This is version 0.12 of Perlmacs, a program based on GNU Emacs with
+This is version 0.13 of Perlmacs, a program based on GNU Emacs with
 the Perl interpreter linked in.
 
 Perlmacs is still considered "beta" at this time, so if you use it for
@@ -18,13 +18,10 @@ For information about CVS updates, see
 `http://john-edwin-tobey.org/perlmacs/'.
 
 
-NEW IN 0.12
+NEW IN 0.13
 ===========
 
-    * Perl coderefs now work with Lisp's eval, not just funcall.
-
-    * Fixed a nasty bug affecting garbage collection after Lisp calls
-      into Perl.
+    * Added many Lisp functions for conveniently accessing Perl data.
 
 
 INSTALLATION
@@ -59,7 +56,7 @@ modules, namely:
     make
     make install
 
-(There are not any tests to run.)  If you want to pass options to the
+(There are no tests to run.)  If you want to pass options to the
 Perlmacs `configure' script, give them to Makefile.PL after a `--'.
 For example:
 

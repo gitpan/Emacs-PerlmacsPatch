@@ -1,3 +1,7 @@
+New in Perlmacs 0.13:
+
+    * Added many Lisp functions for conveniently accessing Perl data.
+
 New in Perlmacs 0.12:
 
     * Perl coderefs now work with Lisp's eval, not just funcall.

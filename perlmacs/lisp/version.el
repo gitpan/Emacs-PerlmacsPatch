@@ -46,7 +46,7 @@ Time at which Emacs was dumped out.")
 
 (defconst emacs-build-system (system-name))
 
-(defconst perlmacs-version "0.12" "\
+(defconst perlmacs-version "0.13" "\
 Version numbers of the Perlmacs patch applied to this Emacs.")
 
 ;; Gawd this would be so much easier in Perl.  :-)
@@ -68,15 +68,15 @@ to the system configuration; look at `system-configuration' instead."
   (interactive "P")
   (let ((version-string 
          (format (if (not (interactive-p))
-		     "GNU Emacs %s with Perlmacs %s (%s%s%s)\n of %s on %s"
-		   "GNU Emacs %s with Perlmacs %s (%s%s%s) of %s on %s")
-                 emacs-version
+		     "Perlmacs %s (GNU Emacs %s) (%s%s%s)\n of %s on %s"
+		   "Perlmacs %s (GNU Emacs %s) (%s%s%s) of %s on %s")
                  perlmacs-version
+                 emacs-version
 		 system-configuration
 		 (cond ((featurep 'motif) ", Motif")
 		       ((featurep 'x-toolkit) ", X toolkit")
 		       (t ""))
-		 (if (featurep 'perl) ", Perl" "")
+		 (if (featurep 'perl-core) ", Perl" "")
 		 (format-time-string "%a %b %e %Y" emacs-build-time)
                  emacs-build-system)))
     (if here 

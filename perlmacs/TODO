@@ -1,61 +1,23 @@
 Things still to be done in Perlmacs development:
 
+Make Emacs namespace-clean.
+
 Check for memory leaks.
 
 Debianize.
 
-Add a non-converting "perl-eval-raw" or similar to help get perlstuff
-into Lisp.
+Make type-of return something like #<perl-package Foo::Bar> for
+blessed references.
 
-Let `perl-eval' take extra args, eval its first arg, and pass its
-value and the rest of the args to `perl-call', e.g.:
+Change the to_string method of Lisp foreign objects into a print
+method, and implement it for Perl data types.  Every data type except
+CODE should be serializable a la Storable.  For bonus points, do CODE
+too, a la B::Deparse.
 
-    (perl-eval "sub { my ($x,$y) = @_; return $x+$y }" x y)
+Find out how `describe-function' works and fix its behavior for Perl
+code objects.
 
-Add Lisp functions for getting at data in Perl data structures:
+Eliminate Fperl_phase and Fperl_status by making the Perl interpreter
+object a vector.
 
-    (perl-scalar-fetch		SCALAR)
-    (perl-scalar-store		SCALAR VALUE)
-    (perl-scalar-undef		SCALAR)
-
-    (perl-array-store		ARRAY INDEX VALUE)
-    (perl-array-fetch		ARRAY INDEX)
-    (perl-array-fetchsize	ARRAY)
-    (perl-array-storesize	ARRAY COUNT)
-    (perl-array-extend		ARRAY COUNT)
-    (perl-array-clear		ARRAY)
-    (perl-array-pop		ARRAY)
-    (perl-array-push		ARRAY &rest LIST)
-    (perl-array-shift		ARRAY)
-    (perl-array-unshift		ARRAY &rest LIST)
-    (perl-array-splice		ARRAY &optional OFFSET LENGTH &rest LIST)
-    (perl-array-undef		ARRAY)
-
-    (perl-hash-store		HASH KEY VALUE)
-    (perl-hash-fetch		HASH KEY)
-    (perl-hash-firstkey		HASH)
-    (perl-hash-nextkey		HASH)
-    (perl-hash-exists		HASH KEY)
-    (perl-hash-delete		HASH KEY)
-    (perl-hash-clear		HASH)
-    (perl-hash-undef		HASH)
-
-  and if feasible...
-    (perl-handle-write		HANDLE OBJECT &optional LENGTH OFFSET)
-    (perl-handle-print		HANDLE &rest LIST)
-    (perl-handle-printf		HANDLE FORMAT &rest LIST)
-    (perl-handle-read		HANDLE STRING &optional LENGTH OFFSET)
-    (perl-handle-readline	HANDLE)
-    (perl-handle-getc		HANDLE)
-    (perl-handle-close		HANDLE)
-    (perl-handle-undef		HANDLE)
-
-  and maybe for Lisp compatibility...
-    (perl-aref ARRAY INDEX)
-    (perl-aset ARRAY INDEX VALUE)
-
-    (perl-gethash KEY HASH &optional DEFAULT)
-    (perl-puthash KEY VALUE HASH)
-    (perl-remhash KEY HASH)
-    (perl-clrhash HASH)
-    (perl-maphash FUNCTION HASH)
+Add a Perl interface to the QUIT macro.

@@ -1,4 +1,4 @@
-;; perl.el -- utilities for Perl embedded in Emacs
+;; perl.el -- interactive for Perl embedded in Emacs
 ;; Copyright (C) 1998,1999 by John Tobey.  All rights reserved.
 
 ;; This file is NOT a part of GNU Emacs and is NOT distributed by
@@ -11,6 +11,8 @@
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ;; GNU General Public License for more details.
 
+
+(require 'perl-core)
 
 (defvar perl-interpreter-args nil
   "Default command line arguments for initializing a Perl interpreter.
@@ -33,7 +35,7 @@ standard input.
 
 NOTE: Using multiple simultaneous Perl interpreters currently is
 not supported."
-;;; " AARGH! what's wrong with highlighting and indentation here?
+;;; AARGH! what's wrong with highlighting and indentation here? "
   (prog1
       (apply 'primitive-make-perl
 	     (or cmdline
@@ -41,6 +43,29 @@ not supported."
 		       (append perl-interpreter-args '("-e0")))))
     ;; Alas, this hook isn't called in batch mode.
     (add-hook 'kill-emacs-hook 'perl-destruct)))
+
+;; Do some dynamic interface generation, because it makes the code cleaner.
+;; Maybe should go in an `eval-when-compile'?
+(mapcar
+ (lambda (type)
+   (eval (list 'defun
+	       (intern (concat "perl-" type "-p"))
+	       '(object)
+	       (concat "Return t if OBJECT is a Perl " type ".")
+	       (list 'eq
+		     '(type-of object)
+		     (list 'quote
+			   (intern (concat "perl-" type)))))))
+ '("interpreter"
+   "scalar"
+   "array"
+   "hash"
+   "code"
+   "glob"))
+
+;(defun perl-interpreter-p (object)
+;  "Return t if OBJECT is a Perl interpreter."
+;  (eq (type-of object) 'perl-interpreter))
 
 (defun perl-eval-expression (expression &optional prefix)
   "Evaluate EXPRESSION as Perl code and print its value in the minibuffer.
@@ -66,44 +91,4 @@ With prefix arg, evaluate in list context."
   (interactive "FLoad Perl file: ")
   (perl-eval-and-call "sub {require $_[0]}" (expand-file-name filename)))
 
-;;; rough and ready substitute for C-u M-| perl -pe 's/foo/bar/g'
-(defun perl-replace-regexp (pattern replacement prefix)
-  "Replace things after point matching PATTERN (a Perl regular expression)
-with REPLACEMENT.  If given a numeric prefix, REPLACEMENT is a Perl
-expression to be evaluated."
-  (interactive (query-replace-read-args "Replace Perl regexp" t))
-  ;; Compile the Perl code once.
-  (or (boundp 'perl-replace-regexp-code)
-      (setq perl-replace-regexp-code
-	    (perl-eval "sub {
-			  my ($string, $patt, $repl, $e_flag) = @_;
-			  my $num;
-			  if ($e_flag) {
-			    $num = $string =~ s/$patt/$repl/eeg;
-			  } else {
-
-			    # Perl's quoting rules are too hellish
-			    # for me.  This works some of the time.
-
-			    # \t becomes a tab, etc.
-			    $repl =~ s|([\\@\\$])|\\\\$1|g;
-			    $repl = eval qq{qq\\@$repl\\@};
-
-			    $repl =~ s|([{}\\\\])|\\\\$1|g;
-			    $repl = eval qq{sub { qq{$repl}}};
-			    $num = $string =~ s/$patt/&$repl/eg;
-			  }
-			  return ($string, $num);
-			}")))
-  (push-mark)
-  (let ((vals (funcall perl-replace-regexp-code
-		       'list-context
-		       (buffer-substring (point) (point-max))
-		       pattern
-		       replacement
-		       (and prefix 1))))
-    (delete-region (point) (point-max))
-    (insert (car vals))
-    (message "Replaced %d occurrence%s"
-	     (cadr vals)
-	     (if (= (cadr vals) 1) "" "s"))))
+(provide 'perl)
