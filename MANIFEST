@@ -1,0 +1,15 @@
+Changes
+MANIFEST
+Makefile.PL
+README
+emacs-perlmacs.diff
+perlmacs/BUGS
+perlmacs/lisp/startup.elc
+perlmacs/lisp/perl.elc
+perlmacs/lisp/version.el
+perlmacs/TODO
+perlmacs/aclocal.m4
+perlmacs/src/eval.h
+perlmacs/src/perlmacs.c
+perlmacs/src/perlmacs.h
+perlmacs/lisp/perl.el

@@ -1,0 +1,72 @@
+New in Perlmacs 0.9.1:
+
+    * Fixed a bug which resulted in core dumps during garbage
+      collection when running a Perl interpreter under Pmacs.
+
+New in Perlmacs 0.9:
+
+    * Reimplemented exception model, eliminating most if not all
+      exception-related coredumps.
+
+    * Support for compiling with threaded Perl... but Emacs is not
+      thread-safe and must never be used by more than one thread in a
+      program.
+
+    * Fixed a bug introduced in 0.8 that caused segv during garbage
+      collection when running in Perl mode and storing Perl references
+      in Lisp objects, e.g.
+
+	  perlmacs -MEmacs::Lisp -e 'lisp [0]; &garbage_collect'
+
+    * A Lisp error object that is propagated through a Perl frame and
+      caught in an outer Lisp frame is no longer converted to a
+      string.
+
+    * New variable `perl-interpreter-args' specifies extra default
+      argv elements for Perl initialization.  For example, put
+
+	  (setq perl-interpreter-args '("-MEmacs::Lisp"))
+
+      in ~/.emacs to load Emacs::Lisp whenever Perl is used in Pmacs.
+
+    * Dumbed down the diff format to work with non-GNU patch.
+
+New in Perlmacs 0.8:
+
+    * Support for Emacs::Lisp 0.83, which allows direct access to Lisp
+      objects and things like `$list->setcdr($list->cdr->cdr)'.
+
+    * No longer uses MakeMaker to install Emacs headers.  Instead,
+      they go in the Emacs installation tree.
+
+    * No longer crashes when `goto' tries to cross a Lisp stack frame.
+
+    * `perl.el' is loaded by default.
+
+New in Perlmacs 0.7.1:
+
+    * Fixed a major bug that caused duplicate free()'s.
+
+New in Perlmacs 0.7:
+
+    * Supports (and requires) Perl 5.005 or better, non-threaded.
+
+    * Perl's malloc may be used.
+
+    * Installation over GNU Emacs won't clobber Emacs' docfile.
+
+    * More robust.  No longer crashes on `die', `signal', or `throw'
+      across Lisp-to-Perl stack frames.  `goto' can still produce a
+      crash, though.
+
+    * Perl's `eval' catches Lisp errors.  Lisp's `condition-case' can
+      catch Perl errors.
+
+    * Arrayrefs become lists.  For example, the Perl expression
+
+	  [1, 2, [3, 4], 5]
+
+      if used as an argument to a Lisp function, would become a list
+      with a sublist:
+
+	  '(1 2 (3 4) 5)
