@@ -1,6 +1,6 @@
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/Makefile.in perlmacs-0.11/Makefile.in
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/Makefile.in perlmacs-0.12/Makefile.in
 *** emacs-20.3/Makefile.in	Sat Aug  1 20:21:22 1998
---- perlmacs-0.11/Makefile.in	Fri Mar 19 21:21:20 1999
+--- perlmacs-0.12/Makefile.in	Fri Mar 19 21:21:20 1999
 ***************
 *** 1,3 ****
 --- 1,7 ----
@@ -213,11 +213,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   
   FRC:
-Only in perlmacs-0.11: TODO
-Only in perlmacs-0.11: aclocal.m4
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/configure perlmacs-0.11/configure
+Only in perlmacs-0.12: TODO
+Only in perlmacs-0.12: aclocal.m4
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/configure perlmacs-0.12/configure
 *** emacs-20.3/configure	Mon Jul 27 04:17:07 1998
---- perlmacs-0.11/configure	Fri Mar 19 21:24:40 1999
+--- perlmacs-0.12/configure	Fri Mar 19 21:24:40 1999
 ***************
 *** 24,29 ****
 --- 24,31 ----
@@ -3758,9 +3758,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   s%@bitmapdir@%$bitmapdir%g
   s%@c_switch_system@%$c_switch_system%g
   s%@c_switch_machine@%$c_switch_machine%g
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/configure.in perlmacs-0.11/configure.in
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/configure.in perlmacs-0.12/configure.in
 *** emacs-20.3/configure.in	Tue Jun 30 18:15:05 1998
---- perlmacs-0.11/configure.in	Fri Mar 19 20:58:34 1999
+--- perlmacs-0.12/configure.in	Fri Mar 19 20:58:34 1999
 ***************
 *** 26,38 ****
   AC_INIT(src/lisp.h)
@@ -3946,9 +3946,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   if test -n "${x_includes}"; then
   echo "  Where do we find X Windows header files?                ${x_includes}"
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/lisp/loadup.el perlmacs-0.11/lisp/loadup.el
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/lisp/loadup.el perlmacs-0.12/lisp/loadup.el
 *** emacs-20.3/lisp/loadup.el	Thu Aug 13 19:00:19 1998
---- perlmacs-0.11/lisp/loadup.el	Sun Mar  7 16:29:09 1999
+--- perlmacs-0.12/lisp/loadup.el	Sun Mar  7 16:29:09 1999
 ***************
 *** 118,123 ****
 --- 118,126 ----
@@ -3961,10 +3961,10 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   (load "replace")
   (if (eq system-type 'vax-vms)
       (progn
-Only in perlmacs-0.11/lisp: perl.el
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/lisp/startup.el perlmacs-0.11/lisp/startup.el
+Only in perlmacs-0.12/lisp: perl.el
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/lisp/startup.el perlmacs-0.12/lisp/startup.el
 *** emacs-20.3/lisp/startup.el	Fri Aug  7 19:18:30 1998
---- perlmacs-0.11/lisp/startup.el	Sun Feb  7 18:33:38 1999
+--- perlmacs-0.12/lisp/startup.el	Sun Feb  7 18:33:38 1999
 ***************
 *** 822,831 ****
   		       ;; The convention for this piece of code is that
@@ -3985,9 +3985,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   		       (if (assq 'display (frame-parameters))
   			   (progn
   			     (insert "\
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/lwlib/Makefile.in perlmacs-0.11/lwlib/Makefile.in
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/lwlib/Makefile.in perlmacs-0.12/lwlib/Makefile.in
 *** emacs-20.3/lwlib/Makefile.in	Sat Aug  1 20:27:59 1998
---- perlmacs-0.11/lwlib/Makefile.in	Sat Mar  6 16:06:04 1999
+--- perlmacs-0.12/lwlib/Makefile.in	Sat Mar  6 16:06:04 1999
 ***************
 *** 50,57 ****
   #If running ranlib fails, probably there is none.
@@ -4012,10 +4012,10 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   	$(CC) -c $(TOOLKIT_DEFINES) $(ALL_CFLAGS) $(srcdir)/lwlib.c
   
   xrdb-cpp.o:  $(srcdir)/xrdb-cpp.c
-Only in perlmacs-0.11: noperl-build
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/.gdbinit perlmacs-0.11/src/.gdbinit
+Only in perlmacs-0.12: noperl-build
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/.gdbinit perlmacs-0.12/src/.gdbinit
 *** emacs-20.3/src/.gdbinit	Sat May  9 21:04:51 1998
---- perlmacs-0.11/src/.gdbinit	Sun Feb  7 20:25:45 1999
+--- perlmacs-0.12/src/.gdbinit	Sun Feb  7 20:25:45 1999
 ***************
 *** 291,296 ****
 --- 291,305 ----
@@ -4034,9 +4034,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   set print pretty on
   set print sevenbit-strings
   
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/Makefile.in perlmacs-0.11/src/Makefile.in
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/Makefile.in perlmacs-0.12/src/Makefile.in
 *** emacs-20.3/src/Makefile.in	Sat Aug  1 20:29:21 1998
---- perlmacs-0.11/src/Makefile.in	Sun Mar  7 16:54:09 1999
+--- perlmacs-0.12/src/Makefile.in	Sun Mar  7 16:54:09 1999
 ***************
 *** 1,3 ****
 --- 1,7 ----
@@ -4209,9 +4209,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   	rm -f ../etc/DOC
   clean: mostlyclean
   	rm -f emacs-* emacs
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/alloc.c perlmacs-0.11/src/alloc.c
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/alloc.c perlmacs-0.12/src/alloc.c
 *** emacs-20.3/src/alloc.c	Sun Jun  7 17:48:08 1998
---- perlmacs-0.11/src/alloc.c	Sun Mar 21 22:00:51 1999
+--- perlmacs-0.12/src/alloc.c	Sun Mar 21 22:00:51 1999
 ***************
 *** 1,3 ****
 --- 1,6 ----
@@ -4538,9 +4538,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   		/* Set the type of the freed object to Lisp_Misc_Free.
   		   We could leave the type alone, since nobody checks it,
   		   but this might catch bugs faster.  */
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/callproc.c perlmacs-0.11/src/callproc.c
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/callproc.c perlmacs-0.12/src/callproc.c
 *** emacs-20.3/src/callproc.c	Wed Aug 19 13:33:54 1998
---- perlmacs-0.11/src/callproc.c	Fri Mar 19 21:18:37 1999
+--- perlmacs-0.12/src/callproc.c	Fri Mar 19 21:18:37 1999
 ***************
 *** 1,3 ****
 --- 1,6 ----
@@ -4631,9 +4631,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
     DEFVAR_LISP ("configure-info-directory", &Vconfigure_info_directory,
       "For internal use by the build procedure only.\n\
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/config.in perlmacs-0.11/src/config.in
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/config.in perlmacs-0.12/src/config.in
 *** emacs-20.3/src/config.in	Mon May 25 00:07:33 1998
---- perlmacs-0.11/src/config.in	Fri Mar 19 19:50:01 1999
+--- perlmacs-0.12/src/config.in	Fri Mar 19 19:50:01 1999
 ***************
 *** 41,47 ****
   /* Define REL_ALLOC if you want to use the relocating allocator for
@@ -4672,9 +4672,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   /* Define HAVE_X_WINDOWS if you want to use the X window system.  */
   #undef HAVE_X_WINDOWS
   
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/data.c perlmacs-0.11/src/data.c
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/data.c perlmacs-0.12/src/data.c
 *** emacs-20.3/src/data.c	Thu May  7 16:39:17 1998
---- perlmacs-0.11/src/data.c	Sun Feb  7 18:40:08 1999
+--- perlmacs-0.12/src/data.c	Sun Feb  7 18:40:08 1999
 ***************
 *** 1,3 ****
 --- 1,6 ----
@@ -4771,9 +4771,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
     defsubr (&Scar);
     defsubr (&Scdr);
     defsubr (&Scar_safe);
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/emacs.c perlmacs-0.11/src/emacs.c
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/emacs.c perlmacs-0.12/src/emacs.c
 *** emacs-20.3/src/emacs.c	Mon Jul 20 21:39:52 1998
---- perlmacs-0.11/src/emacs.c	Wed Mar 24 00:15:41 1999
+--- perlmacs-0.12/src/emacs.c	Wed Mar 24 00:15:41 1999
 ***************
 *** 1,3 ****
 --- 1,6 ----
@@ -5586,9 +5586,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   
   #ifndef CANNOT_DUMP
   #ifdef HAVE_SHM
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/eval.c perlmacs-0.11/src/eval.c
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/eval.c perlmacs-0.12/src/eval.c
 *** emacs-20.3/src/eval.c	Sun Apr 26 22:34:24 1998
---- perlmacs-0.11/src/eval.c	Tue Mar  9 02:26:11 1999
+--- perlmacs-0.12/src/eval.c	Sun Mar 28 14:44:07 1999
 ***************
 *** 1,3 ****
 --- 1,6 ----
@@ -5728,27 +5728,136 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   Lisp_Object
   internal_condition_case_1 (bfun, arg, handlers, hfun)
 ***************
-*** 2501,2506 ****
---- 2469,2483 ----
-      val = funcall_lambda (fun, numargs, args + 1);
-    else
+*** 1688,1693 ****
+--- 1656,1662 ----
+  {
+    Lisp_Object fun, val, original_fun, original_args;
+    Lisp_Object funcar;
++   Lisp_Object args_left, numargs, *vals;
+    struct backtrace backtrace;
+    struct gcpro gcpro1, gcpro2, gcpro3;
+  
+***************
+*** 1740,1750 ****
+   retry:
+    fun = Findirect_function (original_fun);
+  
+    if (SUBRP (fun))
       {
+-       Lisp_Object numargs;
+        Lisp_Object argvals[8];
+-       Lisp_Object args_left;
+        register int i, maxargs;
+  
+        args_left = original_args;
+--- 1709,1757 ----
+   retry:
+    fun = Findirect_function (original_fun);
+  
++   if ((SUBRP (fun) && XSUBR (fun)->max_args == MANY)
++ #ifdef LISP_FOREIGN_OBJECT_TYPE
++       || (FOREIGN_OBJECTP (fun) && XFOREIGN_OBJECT (fun)->vptr->call)
++ #endif
++       )
++     {
++       /* Pass a vector of evaluated arguments */
++       register int argnum = 0;
++ 
++       args_left = original_args;
++       numargs = Flength (args_left);
++       vals = (Lisp_Object *) alloca (XINT (numargs) * sizeof (Lisp_Object));
++ 
++       GCPRO3 (args_left, fun, fun);
++       gcpro3.var = vals;
++       gcpro3.nvars = 0;
++ 
++       while (!NILP (args_left))
++ 	{
++ 	  vals[argnum++] = Feval (Fcar (args_left));
++ 	  args_left = Fcdr (args_left);
++ 	  gcpro3.nvars = argnum;
++ 	}
++ 
++       backtrace.args = vals;
++       backtrace.nargs = XINT (numargs);
++ 
 + #ifdef LISP_FOREIGN_OBJECT_TYPE
 +       if (FOREIGN_OBJECTP (fun))
 + 	{
 + 	  Lisp_Object (*call) () = XFOREIGN_OBJECT (fun)->vptr->call;
-+ 	  if (call)
-+ 	    return (*call) (fun, numargs, args + 1);
++ 	  val = (*call) (fun, XINT (numargs), vals);
 + 	}
++       else
 + #endif /* LISP_FOREIGN_OBJECT_TYPE */
++       val = (*XSUBR (fun)->function) (XINT (numargs), vals);
++       UNGCPRO;
++       goto done;
++     }
 + 
+    if (SUBRP (fun))
+      {
+        Lisp_Object argvals[8];
+        register int i, maxargs;
+  
+        args_left = original_args;
+***************
+*** 1761,1793 ****
+  	  goto done;
+  	}
+  
+-       if (XSUBR (fun)->max_args == MANY)
+- 	{
+- 	  /* Pass a vector of evaluated arguments */
+- 	  Lisp_Object *vals;
+- 	  register int argnum = 0;
+- 
+- 	  vals = (Lisp_Object *) alloca (XINT (numargs) * sizeof (Lisp_Object));
+- 
+- 	  GCPRO3 (args_left, fun, fun);
+- 	  gcpro3.var = vals;
+- 	  gcpro3.nvars = 0;
+- 
+- 	  while (!NILP (args_left))
+- 	    {
+- 	      vals[argnum++] = Feval (Fcar (args_left));
+- 	      args_left = Fcdr (args_left);
+- 	      gcpro3.nvars = argnum;
+- 	    }
+- 
+- 	  backtrace.args = vals;
+- 	  backtrace.nargs = XINT (numargs);
+- 
+- 	  val = (*XSUBR (fun)->function) (XINT (numargs), vals);
+- 	  UNGCPRO;
+- 	  goto done;
+- 	}
+- 
+        GCPRO3 (args_left, fun, fun);
+        gcpro3.var = argvals;
+        gcpro3.nvars = 0;
+--- 1768,1773 ----
+***************
+*** 2500,2505 ****
+--- 2480,2494 ----
+    if (COMPILEDP (fun))
+      val = funcall_lambda (fun, numargs, args + 1);
+    else
++ #ifdef LISP_FOREIGN_OBJECT_TYPE
++     if (FOREIGN_OBJECTP (fun))
++       {
++ 	Lisp_Object (*call) () = XFOREIGN_OBJECT (fun)->vptr->call;
++ 	if (call)
++ 	  val = (*call) (fun, numargs, args + 1);
++       }
++   else
++ #endif /* LISP_FOREIGN_OBJECT_TYPE */
+      {
         if (!CONSP (fun))
   	return Fsignal (Qinvalid_function, Fcons (fun, Qnil));
-        funcar = Fcar (fun);
-Only in perlmacs-0.11/src: eval.h
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/fns.c perlmacs-0.11/src/fns.c
+Only in perlmacs-0.12/src: eval.h
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/fns.c perlmacs-0.12/src/fns.c
 *** emacs-20.3/src/fns.c	Tue Aug 18 04:13:03 1998
---- perlmacs-0.11/src/fns.c	Sun Feb  7 18:43:20 1999
+--- perlmacs-0.12/src/fns.c	Sun Feb  7 18:43:20 1999
 ***************
 *** 1,3 ****
 --- 1,6 ----
@@ -5870,9 +5979,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   	      return 0;
   	  }
   	return 1;
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/lisp.h perlmacs-0.11/src/lisp.h
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/lisp.h perlmacs-0.12/src/lisp.h
 *** emacs-20.3/src/lisp.h	Tue Aug 18 04:55:40 1998
---- perlmacs-0.11/src/lisp.h	Sun Mar 21 21:04:26 1999
+--- perlmacs-0.12/src/lisp.h	Sun Mar 21 21:04:26 1999
 ***************
 *** 1,3 ****
 --- 1,6 ----
@@ -6109,9 +6218,9 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   EXFUN (Fkill_emacs, 1);
   void shut_down_emacs P_ ((int, int, Lisp_Object));
   /* Nonzero means don't do interactive redisplay and don't change tty modes */
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/paths.in perlmacs-0.11/src/paths.in
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/paths.in perlmacs-0.12/src/paths.in
 *** emacs-20.3/src/paths.in	Sat Aug 16 14:29:06 1997
---- perlmacs-0.11/src/paths.in	Fri Mar 19 21:18:25 1999
+--- perlmacs-0.12/src/paths.in	Fri Mar 19 21:18:25 1999
 ***************
 *** 30,35 ****
 --- 30,41 ----
@@ -6127,11 +6236,11 @@ diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --ex
   /* Where the configuration process believes the info tree lives.  The
      lisp variable configure-info-directory gets its value from this
      macro, and is then used to set the Info-default-directory-list.  */
-Only in perlmacs-0.11/src: perlmacs.c
-Only in perlmacs-0.11/src: perlmacs.h
-diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/print.c perlmacs-0.11/src/print.c
+Only in perlmacs-0.12/src: perlmacs.c
+Only in perlmacs-0.12/src: perlmacs.h
+diff -cr --exclude=build --exclude=*.elc --exclude=version.el --exclude=CVS --exclude=README* --exclude=BUGS emacs-20.3/src/print.c perlmacs-0.12/src/print.c
 *** emacs-20.3/src/print.c	Fri Aug  7 03:21:18 1998
---- perlmacs-0.11/src/print.c	Sat Feb 20 19:59:06 1999
+--- perlmacs-0.12/src/print.c	Sat Feb 20 19:59:06 1999
 ***************
 *** 1,3 ****
 --- 1,6 ----

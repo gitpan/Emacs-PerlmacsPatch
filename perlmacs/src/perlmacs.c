@@ -709,6 +709,9 @@ lisp_perl_destroy (object)
   if (perl == top_level_perl)
     return;
 
+  /* We can't get here from within a Perl call, because this function
+     is called only when the interpreter is garbage collected,
+     and it is gcpro'd when running.  */
   if (! PERL_DEFUNCT_P (perl))
     Fperl_destruct (object);
   perl_free (perl->interp);
@@ -1284,8 +1287,7 @@ perlmacs_sv_to_lisp (sv)
     }
 #if 0
   /* &func(*sym) doesn't seem to work unless sym appears elsewhere in Perl.
-     Mayby *::sym will work.  Globs are a mystery to me.
-     Better to disable this kind of stuff.  */
+     Globs are a mystery to me.  Better to disable this kind of stuff.  */
   if (SvTYPE (sv) == SVt_PVGV && GvSTASH (sv)
       && HvNAME (GvSTASH (sv))
       && strEQ (HvNAME (GvSTASH (sv)), "main"))
@@ -1305,8 +1307,6 @@ perlmacs_sv_wrap_lisp (obj)
   SV *rv;
 
   /* Protect object from garbage collection during the SV lifetime.  */
-  /* FIXME: Is there any point in linking by SV* instead of struct sv_lisp*?
-     Would it be better to go a step further and link by the RV*?  */
   prot = (struct sv_lisp *) xmalloc (sizeof (struct sv_lisp));
   prot->obj = obj;
   prot->prev = 0;
@@ -1331,13 +1331,16 @@ perlmacs_lisp_to_sv (obj)
     switch (XTYPE (obj))
       {
       case Lisp_Int:
-	return newSViv ((IV) XINT (obj));
+	return Perl_newSViv ((IV) XINT (obj));
+
 #ifdef LISP_FLOAT_TYPE
       case Lisp_Float:
-	return newSVnv (XFLOAT (obj)->data);
+	return Perl_newSVnv (XFLOAT (obj)->data);
 #endif
       case Lisp_String:
-	return newSVpvn (XSTRING (obj)->data, (STRLEN) XSTRING (obj)->size);
+	return Perl_newSVpvn (XSTRING (obj)->data,
+			      (STRLEN) XSTRING (obj)->size);
+
       case Lisp_Symbol:
 	{
 	  /* Convert symbol to globref.  */
@@ -1352,7 +1355,7 @@ perlmacs_lisp_to_sv (obj)
 	  for (; pcc != end; ++pcc, ++pc)
 	    *pc = (*pcc == '_') ? '-' : (*pcc == '-') ? '_' : *pcc;
 	  *pc = '\0';
-	  return Perl_newRV ((SV *) gv_fetchpv (name, 1, SVt_PVGV));
+	  return Perl_newRV ((SV *) Perl_gv_fetchpv (name, 1, SVt_PVGV));
 	}
       case Lisp_Cons:
 	{

@@ -10,12 +10,7 @@ Carp::croak.
 
 Scalar leaked after error in "use Blah;". (maybe fixed)
 
-Circularity in backtrace_list causes Pmacs to hang in garbage
-collection (uninterruptible by ^G). (maybe fixed, but very spooky)
-
 Compiler warns about incompatible pointer types in alloc.c.
 
 `perl-eval' doesn't propagate syntax errors.  Instead, it reports them
 to stderr.
-
-`perl-destruct' error not caught by `condition-case'

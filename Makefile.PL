@@ -34,14 +34,13 @@ for my $i (0 .. $#ARGV) {
   shift @configure_opts;
   
   for (@configure_opts) {
-    s|'|'\\''|g;
     s|\$|\$\$|g;
-    $_ = "'$_'";
+    if (s|'|'\\''|g) { $_ = "'$_'" }
   }
   last;
 }
 
-grep { /^'--p/ } @configure_opts
+grep { /^--p/ } @configure_opts
   or push @configure_opts, '--prefix=$(PREFIX)';
 
 find_emacs_src () unless defined $emacs_src;
@@ -53,6 +52,18 @@ WriteMakefile (
 	       NAME => 'Emacs::PerlmacsPatch',
 	       dist => { DIST_DEFAULT => 'emacs-perlmacs.diff tardist' }
 	       );
+
+# Makefile must depend on version.el, but MakeMaker makes no provision
+# for this, as far as I can tell.
+# So bludgeon it into shape.
+rename ("Makefile", "Makefile.tmp") or exit;
+open MFT, "Makefile.tmp" or die $!;
+open MF, ">Makefile" or die $!;
+while (<MFT>) {
+  s|^CONFIGDEP =|CONFIGDEP = perlmacs/lisp/version.el|;
+  print MF or die $!;
+}
+unlink "Makefile.tmp";
 exit;
 
 
@@ -64,12 +75,10 @@ sub MY::post_initialize {
 sub MY::top_targets {
   return <<END;
 
-all : $emacs_src/build $emacs_src/build/src/emacs
-
-$emacs_src/build/src/emacs : $emacs_src/build/Makefile
+all : $emacs_src/build $emacs_src/build/Makefile
 	cd $emacs_src/build && \$(MAKE) all
 
-$emacs_src/build/Makefile :
+$emacs_src/build/Makefile : Makefile
 	cd $emacs_src/build && PERL=\$(FULLPERL) ../configure @configure_opts
 
 $emacs_src/build :
@@ -88,7 +97,7 @@ END
 sub MY::install {
   return <<END;
 
-install : $emacs_src/build/src/emacs
+install : all
 	cd $emacs_src/build && \$(MAKE) install
 END
 }
@@ -121,7 +130,7 @@ sub check_perl_ver {
     die <<DEAD;
 
 Your Perl (version $]) is too old for this Perlmacs patch.
-Please use Perl $wanted or greater.
+Please use Perl $wanted or higher.
 
 ### $0 aborted.
 DEAD

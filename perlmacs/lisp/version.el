@@ -46,7 +46,7 @@ Time at which Emacs was dumped out.")
 
 (defconst emacs-build-system (system-name))
 
-(defconst perlmacs-version "0.11" "\
+(defconst perlmacs-version "0.12" "\
 Version numbers of the Perlmacs patch applied to this Emacs.")
 
 ;; Gawd this would be so much easier in Perl.  :-)
