@@ -1,3 +1,10 @@
+New in Perlmacs 0.15:
+
+    * `perlmacs -d -MEmacs -emain' runs the interactive Perl debugger
+      in Emacs mode.
+
+    * Completed %ENV implementation.
+
 New in Perlmacs 0.14:
 
     * Support Perl 5.6.0.  (Emacs 20.3 is still required.)

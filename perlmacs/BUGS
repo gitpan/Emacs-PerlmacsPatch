@@ -7,8 +7,8 @@ Perhaps only X11R5.
 
 After `M-x perl-load-file t/40_error.t': panic: restartop (fixed?)
 
-Error context reporting does a full stack trace instead of a simple
-Carp::croak.
+Error message should report the application line number, not the line
+in Lisp.pm that enters XS and not (normally) a full stack trace.
 
 GCC warns about incompatible pointer types in alloc.c.
 
@@ -22,3 +22,7 @@ make[1]: Circular src <- lib-src dependency dropped.
 
 `make install' prints error messages from `install-info'.  This also
 affects unpatched emacs-20.3.
+
+Running '/usr/local/bin/perl -I/usr/local/lib/perl5/5.6.0 /usr/local/lib/perl5/5.6.0/ExtUtils/xsubpp -v 2>&1' exits with status 16777215 at (eval 29) line 17.
+perlxsi.c: No such file or directory
+perlxs.c: No such file or directory

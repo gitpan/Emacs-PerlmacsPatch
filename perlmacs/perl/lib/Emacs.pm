@@ -10,7 +10,7 @@ use strict;
 use vars qw ( $VERSION @ISA );
 
 
-$VERSION = '0.10';
+$VERSION = '0.11';
 
 sub import {
     my $callpkg = caller;
@@ -18,7 +18,7 @@ sub import {
     tie (*STDOUT, 'Emacs::Stream', \*::standard_output);
     tie (*STDERR, 'Emacs::Minibuffer');
     $SIG{__WARN__} = \&do_warn;
-    tie (%ENV, 'Emacs::Environment');
+    tie (%ENV, 'Emacs::ENV');
     tie (%SIG, 'Emacs::SIG');
 
     no strict 'refs';
@@ -43,19 +43,45 @@ sub do_warn {
 }
 
 
-package Emacs::Environment;
-
-# XXX Probably doesn't work if someone does (let (process-environment)... )
-# or local(%ENV).
+package Emacs::ENV;
 
 sub TIEHASH	{ return bless {}, $_[0]; }
 sub FETCH	{ return &Emacs::Lisp::getenv ($_[1]); }
 sub STORE	{ &Emacs::Lisp::setenv ($_[1], $_[2]); }
+
+# XXX Need to write tests for these.
+
 sub DELETE	{ &Emacs::Lisp::setenv ($_[1], undef); }
-# XXX These should act on process_environment.
-sub EXISTS	{ die "exists not implemented for %ENV"; }
-sub FIRSTKEY	{ die "each not implemented for %ENV"; }
-sub NEXTKEY	{ die "each not implemented for %ENV"; }
+sub EXISTS	{ return defined &FETCH; }
+
+sub FIRSTKEY {
+    my ($pe, $str);
+
+    $pe = Emacs::Lisp::Object::symbol_value (\*::process_environment);
+    return undef if $pe->is_nil;
+    $str = $pe->car->to_perl;
+    $str =~ s/=.*//s;
+    return $str;
+}
+
+sub NEXTKEY {
+    my ($self, $lastkey) = @_;
+    my ($tail, $str);
+
+    for ($tail = Emacs::Lisp::Object::symbol_value (\*::process_environment);
+	 not $tail->is_nil;
+	 $tail = $tail->cdr)
+    {
+	if ($tail->car->to_perl =~ /^\Q$lastkey\E=/s) {
+	    $tail = $tail->cdr;
+	    return undef if $tail->is_nil;
+	    $str = $tail->car->to_perl;
+	    $str =~ s/=.*//s;
+	    return $str;
+	}
+    }
+    return undef;
+}
 
 sub CLEAR { &Emacs::Lisp::set (\*::process_environment, undef); }
 

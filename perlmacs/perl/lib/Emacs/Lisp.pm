@@ -5,7 +5,7 @@
 package Emacs::Lisp;
 
 use 5.005;  # This version requires Perlmacs 0.14, which requires 5.005.
-use Carp;
+use Carp ();
 
 {
     local $ENV{PERL_DL_NONLAZY} = "";
@@ -15,9 +15,10 @@ use Carp;
 # Test for Perlmacs.
 unless (defined (&Emacs::boot_Emacs))
 {
-    croak ("Emacs::Lisp can only be used by Perl embedded in GNU Emacs.\n"
-	   .($^X ne 'perlmacs' ? "Try using `perlmacs' instead of `$^X'.\n"
-	     : ""));
+    Carp::croak ("Emacs::Lisp can only be used by Perl embedded in GNU"
+		 ." Emacs.\n"
+		 .($^X ne 'perlmacs'
+		   ? "Try using `perlmacs' instead of `$^X'.\n" : ""));
 }
 
 use strict;
@@ -27,7 +28,7 @@ my (%special);
 
 require Exporter;
 
-$VERSION = '0.91';
+$VERSION = '0.92';
 Emacs::boot_Emacs ($VERSION);
 
 # Closure generator shared by Emacs::Lisp::AUTOLOAD and
@@ -49,8 +50,7 @@ my $get_funcall_closure = sub {
 	while $msg =~ /^\*(.*)/;
 	$msg = (defined ($msg) ? "; $msg" : "");
 	$function =~ tr/_/-/;
-	local $Carp::CarpLevel = $Carp::CarpLevel + 1;
-	croak "`$function' not implemented$msg";
+	Carp::croak ("`$function' not implemented$msg");
     }
     $function = \*{"::$function"};
     $whose_funcall .= "::funcall";
@@ -96,9 +96,9 @@ sub new		($$) { &to_lisp ($_[1]) }
 
 package Emacs::Lisp::Variable;
 
-sub TIESCALAR	{ bless ($_[1], $_[0]) }
-sub FETCH	{ &Emacs::Lisp::symbol_value }
-sub STORE	{ &Emacs::Lisp::set }
+sub TIESCALAR	{ return bless ($_[1], $_[0]); }
+sub FETCH	{ return &Emacs::Lisp::symbol_value; }
+sub STORE	{ return &Emacs::Lisp::set; }
 
 
 package Emacs::Lisp::Plist;
@@ -106,10 +106,10 @@ package Emacs::Lisp::Plist;
 # tied hash interface to Lisp property lists
 # tie (%sym, 'Emacs::Lisp::Plist', \*::sym)
 
-sub TIEHASH	{ bless (\$_[1], $_[0]) }
-sub FETCH	{ &Emacs::Lisp::get (${$_[0]}, $_[1]) }
-sub STORE	{ &Emacs::Lisp::put (${$_[0]}, $_[1], $_[2]) }
-sub CLEAR	{ &Emacs::Lisp::setplist (${$_[0]}, undef) }
+sub TIEHASH	{ return bless (\$_[1], $_[0]); }
+sub FETCH	{ return &Emacs::Lisp::get (${$_[0]}, $_[1]); }
+sub STORE	{ return &Emacs::Lisp::put (${$_[0]}, $_[1], $_[2]); }
+sub CLEAR	{ &Emacs::Lisp::setplist (${$_[0]}, undef); }
 
 # Look for $key (a Perl thing, typically a \*::globref) in all the
 # even-numbered positions (zero-based) in $list (a Lisp list).
@@ -247,14 +247,14 @@ sub import {
 @EXPORT = map { @$_ } values %EXPORT_TAGS;
 # Is it too hard to add () after "use Emacs::Lisp"?
 
-sub t () { \*::t }
-sub nil () { undef }
+sub t () { return \*::t; }
+sub nil () { return undef; }
 
 sub AUTOLOAD {
     *$AUTOLOAD = $get_funcall_closure->(__PACKAGE__, $AUTOLOAD);
     goto &$AUTOLOAD;
 }
-sub can { &UNIVERSAL::can || $can->(__PACKAGE__, $_[1]) }
+sub can { return &UNIVERSAL::can || $can->(__PACKAGE__, $_[1]); }
 
 %special =
     (
@@ -339,7 +339,7 @@ sub B::BINOP::Emacs__Lisp_push_op_assignees {
 
 sub interactive (;$) {
     my $what = shift;
-    bless \$what, 'Emacs::InteractiveSpec';
+    return bless \$what, 'Emacs::InteractiveSpec';
 }
 
 # See if the first thing the sub does is assign @_ to a list.
@@ -470,8 +470,8 @@ sub defun ($$;$$) {
 
     # FIXME: can't use a sub name.
     ref ($body = $next) eq 'CODE' && $#_ == -1
-	or croak 'Usage: defun ($sym, [$docstring], [&interactive($spec)],'
-	    .' $code)';
+	or Carp::croak ('Usage: defun ($sym, [$docstring],'
+			.' [&interactive($spec)], $code)');
 
     ($arglist, $applylist, $ends_in_list) = _make_arglist ($body);
 
@@ -507,11 +507,12 @@ sub defun ($$;$$) {
     return $sym;
 }
 
-sub catch ($&) { &eval ([\*::catch, [\*::quote, $_[0]], [$_[1]]]) }
-sub save_excursion (&) { &eval ([\*::save_excursion, [$_[0]]]) }
-sub save_current_buffer (&) { &eval ([\*::save_current_buffer, [$_[0]]]) }
-sub save_restriction (&) { &eval ([\*::save_restriction, [$_[0]]]) }
-sub track_mouse (&) { &eval ([\*::track_mouse, [$_[0]]]) }
+sub catch ($&) { return &eval ([\*::catch, [\*::quote, $_[0]], [$_[1]]]); }
+sub save_excursion (&) { return &eval ([\*::save_excursion, [$_[0]]]); }
+sub save_current_buffer (&)
+{ return &eval ([\*::save_current_buffer, [$_[0]]]); }
+sub save_restriction (&) { return &eval ([\*::save_restriction, [$_[0]]]); }
+sub track_mouse (&) { return &eval ([\*::track_mouse, [$_[0]]]); }
 
 
 1;
@@ -1124,8 +1125,6 @@ in principle by reimplementing Emacs' internals.)
 =head1 TO DO
 
 =over 4
-
-=item * Bundle Perlmacs and its related modules.
 
 =item * Provide XSubs for common, non-evalling functions.
 

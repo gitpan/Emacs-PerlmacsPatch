@@ -1,6 +1,6 @@
-28 March 2000
+3 May 2000
 
-This is version 0.14 of Perlmacs, a program based on GNU Emacs with
+This is version 0.15 of Perlmacs, a program based on GNU Emacs with
 the Perl interpreter linked in.  Perlmacs has all the functionality of
 both Perl and Emacs, and it lets Perl code call functions and access
 variables of Lisp.
@@ -33,18 +33,13 @@ me know right away.
 Perlmacs has not been built on Windows, to my knowledge.
 
 
-NEW IN 0.14
+NEW IN 0.15
 ===========
 
-    * Support Perl 5.6.0.  (Emacs 20.3 is still required.)
+    * `perlmacs -d -MEmacs -emain' runs the interactive Perl debugger
+      in Emacs mode.
 
-    * Bundle Emacs::Lisp with the distribution.
-
-    * Fix behavior of special Perl variables STDOUT, %ENV, etc. when
-      using Perl 5.6.0 ("print" inserts text in the buffer).
-
-    * Temporarily removed 0.13 Lisp interface while working on a
-      replacement.
+    * Completed %ENV implementation.
 
 
 INSTALLATION
